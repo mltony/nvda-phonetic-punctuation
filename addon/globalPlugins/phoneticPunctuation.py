@@ -47,7 +47,7 @@ def mylog(s):
 def myAssert(condition):
     if not condition:
         raise RuntimeError("Assertion failed")
-        
+
 pp = "phoneticpunctuation"
 def initConfiguration():
     confspec = {
@@ -57,7 +57,7 @@ def initConfiguration():
     }
     config.conf.spec[pp] = confspec
 
-        
+
 
 class SleepCommand(speech.commands.BaseCallbackCommand):
     def __init__(self, seconds):
@@ -97,7 +97,7 @@ class PpBeepCommand(PpSynchronousCommand):
         t1 = time.time()
         dt = int(1000 * (t1-t0))
         #mylog(f"feed successful {dt} ms")
-        
+
     def getDuration(self):
         return self.length
 
@@ -109,16 +109,18 @@ class PpWaveFileCommand(PpSynchronousCommand):
     def __init__(self, fileName):
         self.fileName = fileName
         self.f = wave.open(self.fileName,"r")
-        if self.f is None: 
+        f = self.f
+        if self.f is None:
             raise RuntimeError("can not open file %s"%self.fileName)
-        
+        self.fileWavePlayer = nvwave.WavePlayer(channels=f.getnchannels(), samplesPerSec=f.getframerate(),bitsPerSample=f.getsampwidth()*8, outputDevice=config.conf["speech"]["outputDevice"],wantDucking=False)
 
     def run(self):
         f = self.f
-        fileWavePlayer = nvwave.WavePlayer(channels=f.getnchannels(), samplesPerSec=f.getframerate(),bitsPerSample=f.getsampwidth()*8, outputDevice=config.conf["speech"]["outputDevice"],wantDucking=False)
+        f.rewind()
+        fileWavePlayer = self.fileWavePlayer
         fileWavePlayer.feed(f.readframes(f.getnframes()))
         fileWavePlayer.idle()
-        
+
     def getDuration(self):
         frames = self.f.getnframes()
         rate = self.f.getframerate()
@@ -135,10 +137,10 @@ class PpChainCommand(PpSynchronousCommand):
     def run(self):
         thread1 = threading.Thread(target = self.threadFunc)
         thread1.start()
-        
+
     def getDuration(self):
         return sum([subcommand.getDuration() for subcommand in self.subcommands])
-        
+
     def threadFunc(self):
         for subcommand in self.subcommands:
             subcommand.run()
@@ -185,20 +187,31 @@ def interceptSpeech():
 
 #interceptSpeech    ()
 
+def getSoundsPath():
+    globalPluginPath = os.path.abspath(os.path.dirname(__file__))
+    addonPath = os.path.split(globalPluginPath)[0]
+    soundsPath = os.path.join(addonPath, "sounds")
+    return soundsPath
+
+
+audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
 audioRuleBeep = "beep"
 audioRuleTypes = [
+    audioRuleBuiltInWave,
     audioRuleWave,
     audioRuleBeep,
 ]
 
 class AudioRule:
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive ".split()
     def __init__(
-        self, 
+        self,
         comment,
         pattern,
         ruleType,
         wavFile=None,
+        builtInWavFile=None,
         tone=None,
         duration=None,
         enabled=True,
@@ -208,58 +221,89 @@ class AudioRule:
         self.pattern = pattern
         self.ruleType = ruleType
         self.wavFile = wavFile
+        self.builtInWavFile = builtInWavFile
         self.tone = tone
         self.duration = duration
         self.enabled = enabled
         self.caseSensitive = caseSensitive
-        
+        self.regexp = re.compile(self.pattern)
+        self.speechCommand = self.getSpeechCommand()
+
     def getDisplayName(self):
         return self.comment or self.pattern
-        
+
     def getReplacementDescription(self):
         if self.ruleType == audioRuleWave:
             return f"Wav: {self.wavFile}"
+        elif self.ruleType == audioRuleBuiltInWave:
+            return self.builtInWavFile
         elif ruleType == audioRuleBeep:
             return f"Beep: {self.tone}@{self.duration}"
         else:
             raise ValueError()
-            
-    def asJson():
-        return {
-            'comment': self.comment,
-            'pattern': self.pattern,
-            'ruleType': self.ruleType,
-            'wavFile': self.wavFile,
-            'tone': self.tone,
-            'duration': self.duration,
-            'enabled': self.enabled,
-            'caseSensitive': self.caseSensitive,
-        }
-        
+
+    def asDict(self):
+        return {k:v for k,v in self.__dict__.items() if k in self.jsonFields}
+
+    def getSpeechCommand(self):
+        if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
+            if self.ruleType == audioRuleBuiltInWave:
+                wavFile = os.path.join(getSoundsPath(), self.builtInWavFile)
+            else:
+                wavFile = self.wavFile
+            return PpWaveFileCommand(wavFile)
+        elif self.ruleType == audioRuleBeep:
+            return PpBeepFileCommand(self.tone, self.duration)
+        else:
+            raise ValueError()
+
+    def processString(self, s):
+        if not self.enabled:
+            yield s
+            return
+        for command in self.processStringInternal(s):
+            if isinstance(command, str):
+                if len(command) > 0:
+                    yield command
+            else:
+                yield command
+
+    def processStringInternal(self, s):
+        index = 0
+        for match in self.regexp.finditer(s):
+            yield s[index:match.start(0)]
+            yield self.speechCommand
+            index = match.end(0)
+        yield s[index:]
+
+
+rulesDialogOpen = False
 rules = []
 def reloadRules():
     global rules
     mylog("reload")
     mylog(config.conf[pp]["rules"])
     rules = [
-        AudioRule(**ruleDict)   
+        AudioRule(**ruleDict)
         for ruleDict in json.loads(config.conf[pp]["rules"])
     ]
 
 
 initConfiguration()
-#reloadRules()
+reloadRules()
 addonHandler.initTranslation()
 
 
 class AudioRuleDialog(wx.Dialog):
     TYPE_LABELS = {
+        audioRuleBuiltInWave: _("&Built in wave"),
         audioRuleWave: _("&Wave file"),
         audioRuleBeep: _("&Beep"),
     }
     TYPE_LABELS_ORDERING = audioRuleTypes
 
     def __init__(self, parent, title=_("Edit audio rule")):
+        #self.biws = self.getBuiltInWaveFiles()
         super(AudioRuleDialog,self).__init__(parent,title=title)
         mainSizer=wx.BoxSizer(wx.VERTICAL)
         sHelper = guiHelper.BoxSizerHelper(self, orientation=wx.VERTICAL)
@@ -267,27 +311,80 @@ class AudioRuleDialog(wx.Dialog):
       # Translators: label for pattern  edit field in add Audio Rule dialog.
         patternLabelText = _("&Pattern")
         self.patternTextCtrl=sHelper.addLabeledControl(patternLabelText, wx.TextCtrl)
-        
+
       # Translators: label for case sensitivity  checkbox in add audio rule dialog.
         caseSensitiveText = _("Case &sensitive")
         self.caseSensitiveCheckBox=sHelper.addItem(wx.CheckBox(self,label=caseSensitiveText))
-        
+
+      # Translators: label for rule_enabled  checkbox in add audio rule dialog.
+        enabledText = _("Rule enabled")
+        self.enabledCheckBox=sHelper.addItem(wx.CheckBox(self,label=enabledText))
+        self.enabledCheckBox.SetValue(True)
       # Translators:  label for type selector radio buttons in add audio rule dialog
         typeText = _("&Type")
         typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]
+        mylog("asdf")
+        mylog(str(AudioRuleDialog.TYPE_LABELS_ORDERING))
+        mylog(str([AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]))
         self.typeRadioBox=sHelper.addItem(wx.RadioBox(self,label=typeText, choices=typeChoices))
+        #self.typeRadioBox.Bind(wx.EVT_CHOICE,self.onType)
+        self.typeRadioBox.Bind(wx.EVT_RADIOBOX,self.onType)
+        self.setType(audioRuleBuiltInWave)
+        self.setType(audioRuleBuiltInWave)
+        self.setType(audioRuleBuiltInWave)
         
+        self.typeControls = {
+            audioRuleBuiltInWave: [],
+            audioRuleWave: [],
+            audioRuleBeep: [],
+        }
+        
+      # Translators: built in wav category  combo box
+        biwCategoryLabelText=_("&Category:")
+        self.biwCategory=guiHelper.LabeledControlHelper(
+            self,
+            biwCategoryLabelText,
+            wx.Choice,
+            choices=self.getBiwCategories(),
+        )
+        self.biwCategory.control.Bind(wx.EVT_CHOICE,self.onBiwCategory)
+        sHelper.sizer.Add(self.biwCategory.control)
+        self.typeControls[audioRuleBuiltInWave].append(self.biwCategory.control)
+      # Translators: built in wav file combo box
+        biwListLabelText=_("&Wave:")
+        #self.biwList = sHelper.addLabeledControl(biwListLabelText, wx.Choice, choices=self.getBuiltInWaveFiles())
+        self.biwList=guiHelper.LabeledControlHelper(
+            self,
+            biwListLabelText,
+            wx.Choice,
+            choices=[],
+        )
+
+        self.biwList.control.Bind(wx.EVT_CHOICE,self.onBiw)
+        sHelper.sizer.Add(self.biwList.control)
+        #self.biwList.control.Disable()
+        self.typeControls[audioRuleBuiltInWave].append(self.biwList.control)
       # Translators: wav file edit box
         self.wavName  = sHelper.addLabeledControl(_("Wav file"), wx.TextCtrl)
-        
+        #self.wavName.Disable()
+        self.typeControls[audioRuleWave].append(self.wavName)
+
       # Translators: This is the button to browse for wav file
         self._browseButton = sHelper.addItem (wx.Button (self, label = _("&Browse...")))
         self._browseButton.Bind(wx.EVT_BUTTON, self._onBrowseClick)
-        
+        #self._browseButton.Disable()
+        self.typeControls[audioRuleWave].append(self._browseButton)
 
       # Translators: label for tone
         toneLabelText = _("&Tone")
-        self.ToneTextCtrl=sHelper.addLabeledControl(toneLabelText, wx.TextCtrl)
+        self.toneTextCtrl=sHelper.addLabeledControl(toneLabelText, wx.TextCtrl)
+        #self.toneTextCtrl.Disable()
+        self.typeControls[audioRuleBeep].append(self.toneTextCtrl)
+      # Translators: label for duration
+        durationLabelText = _("Duration in milliseconds:")
+        self.durationTextCtrl=sHelper.addLabeledControl(durationLabelText, wx.TextCtrl)
+        #self.durationTextCtrl.Disable()
+        self.typeControls[audioRuleBeep].append(self.durationTextCtrl)
 
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
@@ -298,21 +395,37 @@ class AudioRuleDialog(wx.Dialog):
         mainSizer.Add(sHelper.sizer,border=20,flag=wx.ALL)
         mainSizer.Fit(self)
         self.SetSizer(mainSizer)
-        self.setType(audioRuleWave)
         self.patternTextCtrl.SetFocus()
         self.Bind(wx.EVT_BUTTON,self.onOk,id=wx.ID_OK)
+        self.onType(None)
 
     def getType(self):
         typeRadioValue = self.typeRadioBox.GetSelection()
         if typeRadioValue == wx.NOT_FOUND:
-            return audioRuleWave
+            return audioRuleBuiltInWave
         return AudioRuleDialog.TYPE_LABELS_ORDERING[typeRadioValue]
         
+    def setType(self, type):
+        mylog(f"setType({type})")
+        mylog(str(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type)))
+        self.typeRadioBox.SetSelection(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type))
+
     def getInt(self, s):
         if len(s) == 0:
             return None
         return int(s)
-
+        
+    def editRule(self, rule):
+        self.commentTextCtrl.SetValue(rule.comment)
+        self.patternTextCtrl.SetValue(rule.pattern)
+        self.setType(rule.ruleType)
+        self.wavName.SetValue(rule.wavFile)
+        self.setBiw(rule.builtInWavFile)
+        self.toneTextCtrl.SetValue(str(rule.tone or 500))
+        self.durationTextCtrl.SetValue(str(rule.duration or 50))
+        self.enabledCheckBox.SetValue(rule.enabled)
+        self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
+    
     def onOk(self,evt):
         if not self.patternTextCtrl.GetValue():
             # Translators: This is an error message to let the user know that the pattern field is not valid.
@@ -326,24 +439,22 @@ class AudioRuleDialog(wx.Dialog):
                 pattern=self.patternTextCtrl.GetValue(),
                 ruleType=self.getType(),
                 wavFile=self.wavName.GetValue(),
-                tone=self.getInt(self.ToneTextCtrl.GetValue()),
-                duration=None,
-                enabled=True,
+                builtInWavFile=self.getBiw(),
+                tone=self.getInt(self.toneTextCtrl.GetValue()),
+                duration=self.getInt(self.durationTextCtrl.GetValue()),
+                enabled=bool(self.enabledCheckBox.GetValue()),
                 caseSensitive=bool(self.caseSensitiveCheckBox.GetValue()),
             )
         except Exception as e:
             log.debugWarning("Could not add Audio Rule", e)
             # Translators: This is an error message to let the user know that the Audio rule is not valid.
             gui.messageBox(
-                _(f"Error creating audio rule: {e}"), 
-                _("Audio rule Error"), 
+                _(f"Error creating audio rule: {e}"),
+                _("Audio rule Error"),
                 wx.OK|wx.ICON_WARNING, self
             )
             return
         evt.Skip()
-
-    def setType(self, type):
-        self.typeRadioBox.SetSelection(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type))
 
     def _onBrowseClick(self, evt):
         p= 'c:'
@@ -357,10 +468,71 @@ class AudioRuleDialog(wx.Dialog):
             p = fd.GetPath()
             self.wavName.SetValue(p)
             break
+            
+    def getBiwCategories(self):
+        soundsPath = getSoundsPath()
+        return [o for o in os.listdir(soundsPath) 
+            if os.path.isdir(os.path.join(soundsPath,o))
+        ]        
+        
+    def getBuiltInWaveFilesInCategory(self):
+        soundsPath = getSoundsPath()
+        category = self.getBiwCategory()
+        ext = ".wav"
+        return [o for o in os.listdir(os.path.join(soundsPath, category)) 
+            if not os.path.isdir(os.path.join(soundsPath,o))
+                and o.lower().endswith(ext)
+        ]        
 
+    def getBuiltInWaveFiles(self):
+        soundsPath = getSoundsPath()
+        result = []
+        for dirName, subdirList, fileList in os.walk(soundsPath, topdown=True):
+            relDirName = dirName[len(soundsPath):]
+            if len(relDirName) > 0 and relDirName[0] == "\\":
+                relDirName = relDirName[1:]
+            for fileName in fileList:
+                if fileName.lower().endswith(".wav"):
+                    result.append(os.path.join(relDirName, fileName))
+        return result
 
+    def getBiw(self):
+        return os.path.join(
+            self.getBiwCategory(),
+            self.getBuiltInWaveFilesInCategory()[self.biwList.control.GetSelection()]
+        )
+        
+    def setBiw(self, biw):
+        category, biwFile = os.path.split(biw)
+        categoryIndex = self.getBiwCategories().index(category)
+        self.biwCategory.control.SetSelection(categoryIndex)
+        self.onBiwCategory(None)
+        biwIndex = self.getBuiltInWaveFilesInCategory().index(biwFile)
+        self.biwList.control.SetSelection(biwIndex)
 
-
+    def onBiw(self, evt):
+        soundsPath = getSoundsPath()
+        biw = self.getBiw()
+        fullPath = os.path.join(soundsPath, biw)
+        nvwave.playWaveFile(fullPath)
+        
+    def getBiwCategory(self):        
+        return   self.getBiwCategories()[self.biwCategory.control.GetSelection()]
+        
+    def onBiwCategory(self, evt):
+        tones.beep(500, 50)
+        soundsPath = getSoundsPath()
+        category = self.getBiwCategory()
+        mylog(f"qwerty category={category}")
+        mylog(str(dir(self.biwList.control)        ))
+        mylog(str(dir(self.biwList)        ))
+        self.biwList.control.SetItems(self.getBuiltInWaveFilesInCategory())
+         
+    def onType(self, evt):
+        [control.Disable() for (t,controls) in self.typeControls.items() for control in controls]
+        ct = self.getType()
+        [control.Enable() for control in self.typeControls[ct]]
+        
 class RulesDialog(gui.SettingsDialog):
     # Translators: Title for the settings dialog
     title = _("Phonetic Punctuation  rules")
@@ -369,12 +541,14 @@ class RulesDialog(gui.SettingsDialog):
         super().__init__(*args, **kwargs)
 
     def makeSettings(self, settingsSizer):
+        global rulesDialogOpen
+        rulesDialogOpen = True
         reloadRules()
-        self.rules = copy.deepcopy(rules)
+        self.rules = rules[:]
         l = len(rules)
         ll = len(self.rules)
         mylog(f"hahaha {l} {ll}")
-        
+
         sHelper = gui.guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
       # Rules table
         rulesText = _("&Rules")
@@ -388,9 +562,9 @@ class RulesDialog(gui.SettingsDialog):
 
         # Translators: The label for a column in symbols list used to identify a symbol.
         self.rulesList.InsertColumn(0, _("Pattern"), width=self.scaleSize(150))
-        self.rulesList.InsertColumn(1, _("Status"))        
-        self.rulesList.InsertColumn(2, _("Type"))        
-        self.rulesList.InsertColumn(3, _("Effect"))        
+        self.rulesList.InsertColumn(1, _("Status"))
+        self.rulesList.InsertColumn(2, _("Type"))
+        self.rulesList.InsertColumn(3, _("Effect"))
         self.rulesList.Bind(wx.EVT_LIST_ITEM_FOCUSED, self.onListItemFocused)
         self.rulesList.ItemCount = len(self.rules)
       # Buttons
@@ -399,14 +573,15 @@ class RulesDialog(gui.SettingsDialog):
         self.moveDownButton = bHelper.addButton(self, label=_("Move &down"))
         self.addAudioButton = bHelper.addButton(self, label=_("Add &audio rule"))
         self.addAudioButton.Bind(wx.EVT_BUTTON, self.OnAddClick)
+        self.editButton = bHelper.addButton(self, label=_("Edi&t"))
+        self.editButton.Bind(wx.EVT_BUTTON, self.OnEditClick)
         self.removeButton = bHelper.addButton(self, label=_("Re&move rule"))
-        self.removeButton.Disable()
         self.removeButton.Bind(wx.EVT_BUTTON, self.OnRemoveClick)
-        
-        
+
+
     def postInit(self):
         self.rulesList.SetFocus()
-        
+
     def getItemTextForList(self, item, column):
         rule = self.rules[item]
         if column == 0:
@@ -419,7 +594,7 @@ class RulesDialog(gui.SettingsDialog):
             return rule.getReplacementDescription()
         else:
             raise ValueError("Unknown column: %d" % column)
-            
+
     def onListItemFocused(self, evt):
         pass
         #evt.Skip()
@@ -435,7 +610,22 @@ class RulesDialog(gui.SettingsDialog):
             # We don't get a new focus event with the new index.
             self.rulesList.sendListItemFocusedEvent(index)
             self.rulesList.SetFocus()
-            #entryDialog.Destroy()
+            entryDialog.Destroy()
+            
+    def OnEditClick(self,evt):
+        if self.rulesList.GetSelectedItemCount()!=1:
+            return
+        editIndex=self.rulesList.GetFirstSelected()
+        if editIndex<0:
+            return
+        entryDialog=AudioRuleDialog(self)
+        entryDialog.editRule(rules[editIndex])
+        if entryDialog.ShowModal()==wx.ID_OK:
+            self.rules[editIndex] = entryDialog.rule
+            self.rulesList.SetFocus()
+        entryDialog.Destroy()
+
+            
 
     def OnRemoveClick(self,evt):
         index=self.rulesList.GetFirstSelected()
@@ -446,13 +636,22 @@ class RulesDialog(gui.SettingsDialog):
         self.rulesList.SetFocus()
 
     def onOk(self, evt):
-        rulesDicts = [rule.__dict__ for rule in self.rules]
+        global rulesDialogOpen
+        rulesDialogOpen = False
+        rulesDicts = [rule.asDict() for rule in self.rules]
         rulesJson = json.dumps(rulesDicts, indent=4, sort_keys=True)
         mylog("json")
         mylog(rulesJson)
         config.conf[pp]["rules"] = rulesJson
         reloadRules()
         super().onOk(evt)
+        
+    def onCancel(self,evt):
+        global rulesDialogOpen
+        rulesDialogOpen = False
+        super().onCancel(evt)
+
+        
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     scriptCategory = _("Phonetic Punctuation")
@@ -484,15 +683,19 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         speech.manager.SpeechManager.speak = self.originalManagerSpeak
 
     def preSpeak(self, speechSequence, symbolLevel=None, *args, **kwargs):
-        if self.enabled:
+        if self.enabled and not rulesDialogOpen:
             if symbolLevel is None:
                 symbolLevel=config.conf["speech"]["symbolLevel"]
             newSequence = []
-            for element in speechSequence:
-                if type(element) == str:
-                    newSequence.extend(self.test(element, symbolLevel))
-                else:
-                    newSequence.append(element)
+            if False:
+                for element in speechSequence:
+                    if type(element) == str:
+                        newSequence.extend(self.test(element, symbolLevel))
+                    else:
+                        newSequence.append(element)
+            newSequence = speechSequence
+            for rule in rules:
+                newSequence = self.processRule(newSequence, rule, symbolLevel)
             newSequence = self.postProcessSynchronousCommands(newSequence, symbolLevel)
         else:
             newSequence = speechSequence
@@ -502,7 +705,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         #mylog("postSpeak:")
         #mylog(str(speechSequence))
         return self.originalManagerSpeak(selfself, speechSequence, *args, **kwargs)
-        
+
     @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
     def script_togglePp(self, gesture):
         self.enabled = not self.enabled
@@ -511,7 +714,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         else:
             msg = _("Phonetic punctuation off")
         ui.message(msg)
-        
+
 
     def getWavLengthMillis(self, fileName):
         return int(1000 * os.path.getsize(fileName) / tones.SAMPLE_RATE / 4)
@@ -547,6 +750,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             s = s[index + 1:]
         if len(s) > 0:
             yield s
+            
+    def processRule(self, speechSequence, rule, symbolLevel):
+        newSequence = []
+        for command in speechSequence:
+            if isinstance(command, str):
+                newSequence.extend(rule.processString(command))
+            else:
+                newSequence.append(command)
+        return newSequence
 
     def postProcessSynchronousCommands(self, speechSequence, symbolLevel):
         #mylog("asdf")
@@ -556,7 +768,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             if not isinstance(element, str)
             or not speech.isBlank(speech.processText(language,element,symbolLevel))
         ]
-        
+
         #mylog(str(speechSequence))
         newSequence = []
         for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
@@ -569,6 +781,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 newSequence.extend(values)
             l = len(newSequence)
             #mylog(f"hahaha {isSynchronous} {l}")
-        
+
         #mylog(str(newSequence))
         return newSequence
+        
