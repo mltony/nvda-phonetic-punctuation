@@ -177,7 +177,7 @@ def initConfiguration():
     """
     confspec = {
         "prePause" : "integer( default=1, min=0, max=60000)",
-        "rules" : "string( default='')",
+        "rules" : "string( default=defaultRules)",
         "applicationsBlacklist" : "string( default='audacity')",
     }
     config.conf.spec[pp] = confspec
