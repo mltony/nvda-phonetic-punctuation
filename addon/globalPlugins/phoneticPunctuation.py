@@ -110,7 +110,7 @@ def initConfiguration():
             {
                 "builtInWavFile": "3d\\network-down.wav",
                 "caseSensitive": false,
-                "comment": "",
+                "comment": "]",
                 "duration": 50,
                 "enabled": true,
                 "pattern": "\\]",
@@ -132,12 +132,12 @@ def initConfiguration():
             {
                 "builtInWavFile": "chimes\\close-object.wav",
                 "caseSensitive": false,
-                "comment": "",
-                "duration": null,
+                "comment": ".",
+                "duration": 50,
                 "enabled": true,
                 "pattern": "\\.",
                 "ruleType": "builtInWave",
-                "tone": null,
+                "tone": 500,
                 "wavFile": ""
             },
             {
@@ -160,6 +160,17 @@ def initConfiguration():
                 "pattern": "\\?",
                 "ruleType": "builtInWave",
                 "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\window-resize.wav",
+                "caseSensitive": true,
+                "comment": "blank",
+                "duration": 50,
+                "enabled": true,
+                "pattern": "^blank$",
+                "ruleType": "builtInWave",
+                "tone": 500,
                 "wavFile": ""
             }
         ]
@@ -313,7 +324,7 @@ class AudioRule:
                 wavFile = self.wavFile
             return PpWaveFileCommand(wavFile)
         elif self.ruleType == audioRuleBeep:
-            return PpBeepFileCommand(self.tone, self.duration)
+            return PpBeepCommand(self.tone, self.duration)
         else:
             raise ValueError()
 
@@ -341,6 +352,8 @@ rulesDialogOpen = False
 rules = []
 def reloadRules():
     global rules
+    mylog("Loading rules:")
+    mylog(config.conf[pp]["rules"])
     rules = [
         AudioRule(**ruleDict)
         for ruleDict in json.loads(config.conf[pp]["rules"])
@@ -631,7 +644,7 @@ class RulesDialog(gui.SettingsDialog):
         if column == 0:
             return rule.getDisplayName()
         elif column == 1:
-            return str(rule.enabled)
+            return "Enabled" if rule.enabled else "Disabled"
         elif column == 2:
             return rule.ruleType
         elif column == 3:
@@ -817,7 +830,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         """
         With some versions of eloquence driver, when the entire utterance has been replaced with audio icons, and therefore there is nothing else to speak,
         the driver for some reason issues the callback command after the break command, not before.
-        To work around this, we detect this case and remove break command.
+        To work around this, we detect this case and remove break command completely.
         """
         nonEmpty = [element for element in speechSequence
             if  isinstance(element, str)
