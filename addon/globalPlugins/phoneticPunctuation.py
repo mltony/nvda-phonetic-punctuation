@@ -36,7 +36,7 @@ import ui
 import wave
 import wx
 
-debug = True
+debug = False
 if debug:
     f = open("C:\\Users\\tony\\Dropbox\\1.txt", "w")
 def mylog(s):
@@ -50,6 +50,120 @@ def myAssert(condition):
 
 pp = "phoneticpunctuation"
 def initConfiguration():
+    defaultRules = """
+        [
+            {
+                "builtInWavFile": "3d\\item.wav",
+                "caseSensitive": false,
+                "comment": "",
+                "duration": null,
+                "enabled": true,
+                "pattern": "!",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "classic\\ask-short-question.wav",
+                "caseSensitive": false,
+                "comment": "",
+                "duration": 50,
+                "enabled": true,
+                "pattern": "@",
+                "ruleType": "builtInWave",
+                "tone": 500,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\left.wav",
+                "caseSensitive": false,
+                "comment": "(",
+                "duration": null,
+                "enabled": true,
+                "pattern": "\\(",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\right.wav",
+                "caseSensitive": false,
+                "comment": ")",
+                "duration": null,
+                "enabled": true,
+                "pattern": "\\)",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\network-up.wav",
+                "caseSensitive": false,
+                "comment": "[",
+                "duration": 50,
+                "enabled": true,
+                "pattern": "\\[",
+                "ruleType": "builtInWave",
+                "tone": 500,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\network-down.wav",
+                "caseSensitive": false,
+                "comment": "",
+                "duration": 50,
+                "enabled": true,
+                "pattern": "\\]",
+                "ruleType": "builtInWave",
+                "tone": 500,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "3d\\ellipses.wav",
+                "caseSensitive": false,
+                "comment": "...",
+                "duration": null,
+                "enabled": true,
+                "pattern": "\\.{3,}",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "chimes\\close-object.wav",
+                "caseSensitive": false,
+                "comment": "",
+                "duration": null,
+                "enabled": true,
+                "pattern": "\\.",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "chimes\\delete-object.wav",
+                "caseSensitive": false,
+                "comment": "",
+                "duration": null,
+                "enabled": true,
+                "pattern": ",",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            },
+            {
+                "builtInWavFile": "chimes\\yank-object.wav",
+                "caseSensitive": false,
+                "comment": "?",
+                "duration": null,
+                "enabled": true,
+                "pattern": "\\?",
+                "ruleType": "builtInWave",
+                "tone": null,
+                "wavFile": ""
+            }
+        ]
+    """
     confspec = {
         "prePause" : "integer( default=1, min=0, max=60000)",
         "rules" : "string( default='')",
@@ -59,16 +173,7 @@ def initConfiguration():
 
 
 
-class SleepCommand(speech.commands.BaseCallbackCommand):
-    def __init__(self, seconds):
-        self.seconds = seconds
 
-    def run(self):
-        import time
-        time.sleep(self.seconds)
-
-    def __repr__(self):
-        return "SleepCommand({self.seconds})".format(**locals())
 ppSynchronousPlayer = nvwave.WavePlayer(channels=2, samplesPerSec=int(tones.SAMPLE_RATE), bitsPerSample=16, outputDevice=config.conf["speech"]["outputDevice"],wantDucking=True)
 
 class PpSynchronousCommand(speech.commands.BaseCallbackCommand):
@@ -84,19 +189,13 @@ class PpBeepCommand(PpSynchronousCommand):
         self.right = right
 
     def run(self):
-        #mylog(f"run {self}")
         from NVDAHelper import generateBeep
         hz,length,left,right = self.hz, self.length, self.left, self.right
         bufSize=generateBeep(None,hz,length,left,right)
         buf=create_string_buffer(bufSize)
         generateBeep(buf,hz,length,left,right)
-        import time
-        t0 = time.time()
         ppSynchronousPlayer.feed(buf.raw)
         ppSynchronousPlayer.idle()
-        t1 = time.time()
-        dt = int(1000 * (t1-t0))
-        #mylog(f"feed successful {dt} ms")
 
     def getDuration(self):
         return self.length
@@ -147,45 +246,6 @@ class PpChainCommand(PpSynchronousCommand):
 
     def __repr__(self):
         return f"PpChainCommand({self.subcommands})"
-
-
-
-
-def hook(*args, **kwargs):
-    pass
-    #tones.beep(500, 50)
-    #mylog("Hook!")
-    #mylog(args)
-    #mylog(kwargs)
-
-def interceptSpeech():
-    def makeInterceptFunc(targetFunc):
-        def wrapperFunc(*args, **kwargs):
-            hook(*args, **kwargs)
-            #args[0] = [speech.commands.BeepCommand(500, 300)] + args[0]
-            #new_speech = [speech.commands.BeepCommand(500, 300)] + args[0][1:]
-            seq = args[0]
-            #mylog(str(seq))
-            new_seq = []
-            for s in seq:
-                if isinstance(s, str):
-                    ss = s.split("(")
-                    new_seq.append(ss[0])
-                    for sss in ss[1:]:
-                        new_seq.append(speech.commands.BeepCommand(500, 500))
-                        #new_seq.append(SleepCommand(1))
-                        new_seq.append(speech.BreakCommand(500))
-                        new_seq.append(sss)
-                else:
-                    new_seq.append(s)
-            #new_speech = [SleepCommand(1)] + args[0][1:]
-            new_args = [new_seq] + list(args)[1:]
-            new_args = tuple(new_args)
-            targetFunc(*new_args, **kwargs)
-        return wrapperFunc
-    speech.speak = makeInterceptFunc(speech.speak)
-
-#interceptSpeech    ()
 
 def getSoundsPath():
     globalPluginPath = os.path.abspath(os.path.dirname(__file__))
@@ -281,8 +341,6 @@ rulesDialogOpen = False
 rules = []
 def reloadRules():
     global rules
-    mylog("reload")
-    mylog(config.conf[pp]["rules"])
     rules = [
         AudioRule(**ruleDict)
         for ruleDict in json.loads(config.conf[pp]["rules"])
@@ -323,22 +381,16 @@ class AudioRuleDialog(wx.Dialog):
       # Translators:  label for type selector radio buttons in add audio rule dialog
         typeText = _("&Type")
         typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]
-        mylog("asdf")
-        mylog(str(AudioRuleDialog.TYPE_LABELS_ORDERING))
-        mylog(str([AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]))
         self.typeRadioBox=sHelper.addItem(wx.RadioBox(self,label=typeText, choices=typeChoices))
-        #self.typeRadioBox.Bind(wx.EVT_CHOICE,self.onType)
         self.typeRadioBox.Bind(wx.EVT_RADIOBOX,self.onType)
         self.setType(audioRuleBuiltInWave)
-        self.setType(audioRuleBuiltInWave)
-        self.setType(audioRuleBuiltInWave)
-        
+
         self.typeControls = {
             audioRuleBuiltInWave: [],
             audioRuleWave: [],
             audioRuleBeep: [],
         }
-        
+
       # Translators: built in wav category  combo box
         biwCategoryLabelText=_("&Category:")
         self.biwCategory=guiHelper.LabeledControlHelper(
@@ -404,17 +456,15 @@ class AudioRuleDialog(wx.Dialog):
         if typeRadioValue == wx.NOT_FOUND:
             return audioRuleBuiltInWave
         return AudioRuleDialog.TYPE_LABELS_ORDERING[typeRadioValue]
-        
+
     def setType(self, type):
-        mylog(f"setType({type})")
-        mylog(str(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type)))
         self.typeRadioBox.SetSelection(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type))
 
     def getInt(self, s):
         if len(s) == 0:
             return None
         return int(s)
-        
+
     def editRule(self, rule):
         self.commentTextCtrl.SetValue(rule.comment)
         self.patternTextCtrl.SetValue(rule.pattern)
@@ -425,7 +475,7 @@ class AudioRuleDialog(wx.Dialog):
         self.durationTextCtrl.SetValue(str(rule.duration or 50))
         self.enabledCheckBox.SetValue(rule.enabled)
         self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
-    
+
     def onOk(self,evt):
         if not self.patternTextCtrl.GetValue():
             # Translators: This is an error message to let the user know that the pattern field is not valid.
@@ -468,21 +518,21 @@ class AudioRuleDialog(wx.Dialog):
             p = fd.GetPath()
             self.wavName.SetValue(p)
             break
-            
+
     def getBiwCategories(self):
         soundsPath = getSoundsPath()
-        return [o for o in os.listdir(soundsPath) 
+        return [o for o in os.listdir(soundsPath)
             if os.path.isdir(os.path.join(soundsPath,o))
-        ]        
-        
+        ]
+
     def getBuiltInWaveFilesInCategory(self):
         soundsPath = getSoundsPath()
         category = self.getBiwCategory()
         ext = ".wav"
-        return [o for o in os.listdir(os.path.join(soundsPath, category)) 
+        return [o for o in os.listdir(os.path.join(soundsPath, category))
             if not os.path.isdir(os.path.join(soundsPath,o))
                 and o.lower().endswith(ext)
-        ]        
+        ]
 
     def getBuiltInWaveFiles(self):
         soundsPath = getSoundsPath()
@@ -501,7 +551,7 @@ class AudioRuleDialog(wx.Dialog):
             self.getBiwCategory(),
             self.getBuiltInWaveFilesInCategory()[self.biwList.control.GetSelection()]
         )
-        
+
     def setBiw(self, biw):
         category, biwFile = os.path.split(biw)
         categoryIndex = self.getBiwCategories().index(category)
@@ -515,24 +565,21 @@ class AudioRuleDialog(wx.Dialog):
         biw = self.getBiw()
         fullPath = os.path.join(soundsPath, biw)
         nvwave.playWaveFile(fullPath)
-        
-    def getBiwCategory(self):        
+
+    def getBiwCategory(self):
         return   self.getBiwCategories()[self.biwCategory.control.GetSelection()]
-        
+
     def onBiwCategory(self, evt):
         tones.beep(500, 50)
         soundsPath = getSoundsPath()
         category = self.getBiwCategory()
-        mylog(f"qwerty category={category}")
-        mylog(str(dir(self.biwList.control)        ))
-        mylog(str(dir(self.biwList)        ))
         self.biwList.control.SetItems(self.getBuiltInWaveFilesInCategory())
-         
+
     def onType(self, evt):
         [control.Disable() for (t,controls) in self.typeControls.items() for control in controls]
         ct = self.getType()
         [control.Enable() for control in self.typeControls[ct]]
-        
+
 class RulesDialog(gui.SettingsDialog):
     # Translators: Title for the settings dialog
     title = _("Phonetic Punctuation  rules")
@@ -545,9 +592,6 @@ class RulesDialog(gui.SettingsDialog):
         rulesDialogOpen = True
         reloadRules()
         self.rules = rules[:]
-        l = len(rules)
-        ll = len(self.rules)
-        mylog(f"hahaha {l} {ll}")
 
         sHelper = gui.guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
       # Rules table
@@ -611,7 +655,7 @@ class RulesDialog(gui.SettingsDialog):
             self.rulesList.sendListItemFocusedEvent(index)
             self.rulesList.SetFocus()
             entryDialog.Destroy()
-            
+
     def OnEditClick(self,evt):
         if self.rulesList.GetSelectedItemCount()!=1:
             return
@@ -625,7 +669,7 @@ class RulesDialog(gui.SettingsDialog):
             self.rulesList.SetFocus()
         entryDialog.Destroy()
 
-            
+
 
     def OnRemoveClick(self,evt):
         index=self.rulesList.GetFirstSelected()
@@ -640,18 +684,16 @@ class RulesDialog(gui.SettingsDialog):
         rulesDialogOpen = False
         rulesDicts = [rule.asDict() for rule in self.rules]
         rulesJson = json.dumps(rulesDicts, indent=4, sort_keys=True)
-        mylog("json")
-        mylog(rulesJson)
         config.conf[pp]["rules"] = rulesJson
         reloadRules()
         super().onOk(evt)
-        
+
     def onCancel(self,evt):
         global rulesDialogOpen
         rulesDialogOpen = False
         super().onCancel(evt)
 
-        
+
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     scriptCategory = _("Phonetic Punctuation")
@@ -702,8 +744,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return self.originalSpeechSpeak(newSequence, symbolLevel, *args, **kwargs)
 
     def postSpeak(self, selfself, speechSequence, *args, **kwargs):
-        #mylog("postSpeak:")
-        #mylog(str(speechSequence))
         return self.originalManagerSpeak(selfself, speechSequence, *args, **kwargs)
 
     @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
@@ -730,15 +770,9 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             index = s.index("!")
             prefix = s[:index]
             prefix = prefix.lstrip()
-            #mylog(f"qwerty lang={language}")
-            #mylog(f"qwerty {prefix} {symbolLevel}")
             pPrefix = speech.processText(language,prefix,symbolLevel)
-            #mylog(f"pPrefix={pPrefix}")
             if speech.isBlank(pPrefix):
                 pass
-                #mylog("Empty prefix")
-                #mylog(prefix)
-                #mylog(pPrefix)
             else:
                 yield  prefix
             #yield speech.commands.WaveFileCommand(wav)
@@ -750,7 +784,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             s = s[index + 1:]
         if len(s) > 0:
             yield s
-            
+
     def processRule(self, speechSequence, rule, symbolLevel):
         newSequence = []
         for command in speechSequence:
@@ -761,15 +795,12 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         return newSequence
 
     def postProcessSynchronousCommands(self, speechSequence, symbolLevel):
-        #mylog("asdf")
-        #mylog(str(speechSequence))
         language=speech.getCurrentLanguage()
         speechSequence = [element for element in speechSequence
             if not isinstance(element, str)
             or not speech.isBlank(speech.processText(language,element,symbolLevel))
         ]
 
-        #mylog(str(speechSequence))
         newSequence = []
         for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
             if isSynchronous:
@@ -779,9 +810,26 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
                 newSequence.append(speech.commands.BreakCommand(duration))
             else:
                 newSequence.extend(values)
-            l = len(newSequence)
-            #mylog(f"hahaha {isSynchronous} {l}")
-
-        #mylog(str(newSequence))
+        newSequence = self.eloquenceFix(newSequence, language, symbolLevel)
         return newSequence
-        
+
+    def eloquenceFix(self, speechSequence, language, symbolLevel):
+        """
+        With some versions of eloquence driver, when the entire utterance has been replaced with audio icons, and therefore there is nothing else to speak,
+        the driver for some reason issues the callback command after the break command, not before.
+        To work around this, we detect this case and remove break command.
+        """
+        nonEmpty = [element for element in speechSequence
+            if  isinstance(element, str)
+            and not speech.isBlank(speech.processText(language,element,symbolLevel))
+        ]
+        if len(nonEmpty) > 0:
+            return speechSequence
+        indicesToRemove = []
+        for i in range(1, len(speechSequence)):
+            if  (
+                isinstance(speechSequence[i], speech.commands.BreakCommand)
+                and isinstance(speechSequence[i-1], PpChainCommand)
+            ):
+                indicesToRemove.append(i)
+        return [speechSequence[i] for i in range(len(speechSequence)) if i not in indicesToRemove]
