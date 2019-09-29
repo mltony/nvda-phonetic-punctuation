@@ -49,135 +49,136 @@ def myAssert(condition):
         raise RuntimeError("Assertion failed")
 
 pp = "phoneticpunctuation"
+defaultRules = """
+    [
+        {
+            "builtInWavFile": "3d\\item.wav",
+            "caseSensitive": false,
+            "comment": "",
+            "duration": null,
+            "enabled": true,
+            "pattern": "!",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "classic\\ask-short-question.wav",
+            "caseSensitive": false,
+            "comment": "",
+            "duration": 50,
+            "enabled": true,
+            "pattern": "@",
+            "ruleType": "builtInWave",
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\left.wav",
+            "caseSensitive": false,
+            "comment": "(",
+            "duration": null,
+            "enabled": true,
+            "pattern": "\\(",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\right.wav",
+            "caseSensitive": false,
+            "comment": ")",
+            "duration": null,
+            "enabled": true,
+            "pattern": "\\)",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\network-up.wav",
+            "caseSensitive": false,
+            "comment": "[",
+            "duration": 50,
+            "enabled": true,
+            "pattern": "\\[",
+            "ruleType": "builtInWave",
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\network-down.wav",
+            "caseSensitive": false,
+            "comment": "]",
+            "duration": 50,
+            "enabled": true,
+            "pattern": "\\]",
+            "ruleType": "builtInWave",
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\ellipses.wav",
+            "caseSensitive": false,
+            "comment": "...",
+            "duration": null,
+            "enabled": true,
+            "pattern": "\\.{3,}",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "chimes\\close-object.wav",
+            "caseSensitive": false,
+            "comment": ".",
+            "duration": 50,
+            "enabled": true,
+            "pattern": "\\.",
+            "ruleType": "builtInWave",
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "chimes\\delete-object.wav",
+            "caseSensitive": false,
+            "comment": "",
+            "duration": null,
+            "enabled": true,
+            "pattern": ",",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "chimes\\yank-object.wav",
+            "caseSensitive": false,
+            "comment": "?",
+            "duration": null,
+            "enabled": true,
+            "pattern": "\\?",
+            "ruleType": "builtInWave",
+            "tone": null,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\window-resize.wav",
+            "caseSensitive": true,
+            "comment": "blank",
+            "duration": 50,
+            "enabled": true,
+            "pattern": "^blank$",
+            "ruleType": "builtInWave",
+            "tone": 500,
+            "wavFile": ""
+        }
+    ]
+""".replace("\\", "\\\\")
 def initConfiguration():
-    defaultRules = """
-        [
-            {
-                "builtInWavFile": "3d\\item.wav",
-                "caseSensitive": false,
-                "comment": "",
-                "duration": null,
-                "enabled": true,
-                "pattern": "!",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "classic\\ask-short-question.wav",
-                "caseSensitive": false,
-                "comment": "",
-                "duration": 50,
-                "enabled": true,
-                "pattern": "@",
-                "ruleType": "builtInWave",
-                "tone": 500,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\left.wav",
-                "caseSensitive": false,
-                "comment": "(",
-                "duration": null,
-                "enabled": true,
-                "pattern": "\\(",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\right.wav",
-                "caseSensitive": false,
-                "comment": ")",
-                "duration": null,
-                "enabled": true,
-                "pattern": "\\)",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\network-up.wav",
-                "caseSensitive": false,
-                "comment": "[",
-                "duration": 50,
-                "enabled": true,
-                "pattern": "\\[",
-                "ruleType": "builtInWave",
-                "tone": 500,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\network-down.wav",
-                "caseSensitive": false,
-                "comment": "]",
-                "duration": 50,
-                "enabled": true,
-                "pattern": "\\]",
-                "ruleType": "builtInWave",
-                "tone": 500,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\ellipses.wav",
-                "caseSensitive": false,
-                "comment": "...",
-                "duration": null,
-                "enabled": true,
-                "pattern": "\\.{3,}",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "chimes\\close-object.wav",
-                "caseSensitive": false,
-                "comment": ".",
-                "duration": 50,
-                "enabled": true,
-                "pattern": "\\.",
-                "ruleType": "builtInWave",
-                "tone": 500,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "chimes\\delete-object.wav",
-                "caseSensitive": false,
-                "comment": "",
-                "duration": null,
-                "enabled": true,
-                "pattern": ",",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "chimes\\yank-object.wav",
-                "caseSensitive": false,
-                "comment": "?",
-                "duration": null,
-                "enabled": true,
-                "pattern": "\\?",
-                "ruleType": "builtInWave",
-                "tone": null,
-                "wavFile": ""
-            },
-            {
-                "builtInWavFile": "3d\\window-resize.wav",
-                "caseSensitive": true,
-                "comment": "blank",
-                "duration": 50,
-                "enabled": true,
-                "pattern": "^blank$",
-                "ruleType": "builtInWave",
-                "tone": 500,
-                "wavFile": ""
-            }
-        ]
-    """
+
     confspec = {
         "prePause" : "integer( default=1, min=0, max=60000)",
-        "rules" : "string( default=defaultRules)",
+        "rules" : "string( default='')",
         "applicationsBlacklist" : "string( default='audacity')",
     }
     config.conf.spec[pp] = confspec
@@ -352,11 +353,15 @@ rulesDialogOpen = False
 rules = []
 def reloadRules():
     global rules
+    rulesConfig = config.conf[pp]["rules"]
     mylog("Loading rules:")
-    mylog(config.conf[pp]["rules"])
+    if len(rulesConfig) == 0:
+        mylog("No rules config found, using default one.")
+        rulesConfig = defaultRules
+    mylog(rulesConfig)
     rules = [
         AudioRule(**ruleDict)
-        for ruleDict in json.loads(config.conf[pp]["rules"])
+        for ruleDict in json.loads(rulesConfig)
     ]
 
 
