@@ -759,7 +759,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             newSequence = self.postProcessSynchronousCommands(newSequence, symbolLevel)
         else:
             newSequence = speechSequence
-        return self.originalSpeechSpeak(newSequence, symbolLevel, *args, **kwargs)
+        return self.originalSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
 
     def postSpeak(self, selfself, speechSequence, *args, **kwargs):
         return self.originalManagerSpeak(selfself, speechSequence, *args, **kwargs)
