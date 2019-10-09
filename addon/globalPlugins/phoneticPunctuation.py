@@ -23,6 +23,7 @@ from NVDAObjects.window import winword
 import nvwave
 import operator
 import os
+from queue import Queue
 import re
 import sayAllHandler
 from scriptHandler import script, willSayAllResume
@@ -31,23 +32,77 @@ import speech.commands
 import struct
 import textInfos
 import threading
+from threading import Thread
+import time
 import tones
 import ui
 import wave
 import wx
 
-debug = False
+debug = True
 if debug:
     f = open("C:\\Users\\tony\\Dropbox\\1.txt", "w")
+    LOG_MUTEX = threading.Lock()
 def mylog(s):
     if debug:
-        print(str(s), file=f)
-        f.flush()
+        with LOG_MUTEX:
+            print(str(s), file=f)
+            f.flush()
 
 def myAssert(condition):
     if not condition:
         raise RuntimeError("Assertion failed")
+        
+class Worker(Thread):
+    """ Thread executing tasks from a given tasks queue """
+    def __init__(self, tasks):
+        mylog("Worker.__init__")
+        Thread.__init__(self)
+        self.tasks = tasks
+        self.daemon = True
+        self.start()
 
+    def run(self):
+        mylog("Worker.run")
+        while True:
+            func, args, kargs = self.tasks.get()
+            mylog("Worker - task received")
+            try:
+                func(*args, **kargs)
+            except Exception as e:
+                # An exception happened in this thread
+                mylog(e)
+                log.error("Error in ThreadPool ", e)
+                #print(e)
+            finally:
+                # Mark this task as done, whether an exception happened or not
+                self.tasks.task_done()
+
+
+class ThreadPool:
+    """ Pool of threads consuming tasks from a queue """
+    def __init__(self, num_threads):
+        mylog("ThreadPool.__init__")
+        self.tasks = Queue(num_threads)
+        for _ in range(num_threads):
+            Worker(self.tasks)
+
+    def add_task(self, func, *args, **kargs):
+        mylog("ThreadPool.add_task")
+        """ Add a task to the queue """
+        self.tasks.put((func, args, kargs))
+
+    def map(self, func, args_list):
+        """ Add a list of tasks to the queue """
+        for args in args_list:
+            self.add_task(func, args)
+
+    def wait_completion(self):
+        """ Wait for completion of all the tasks in the queue """
+        self.tasks.join()
+
+        
+threadPool = ThreadPool(5)
 pp = "phoneticpunctuation"
 defaultRules = """
     [
@@ -217,8 +272,10 @@ class PpBeepCommand(PpSynchronousCommand):
             hz=self.hz, length=self.length, left=self.left, right=self.right)
 
 class PpWaveFileCommand(PpSynchronousCommand):
-    def __init__(self, fileName):
+    def __init__(self, fileName, startAdjustment=0, endAdjustment=0):
         self.fileName = fileName
+        self.startAdjustment = startAdjustment
+        self.endAdjustment = endAdjustment
         self.f = wave.open(self.fileName,"r")
         f = self.f
         if self.f is None:
@@ -228,14 +285,26 @@ class PpWaveFileCommand(PpSynchronousCommand):
     def run(self):
         f = self.f
         f.rewind()
+        if self.startAdjustment > 0:
+            time.sleep(self.startAdjustment / 1000.0)
+        elif self.startAdjustment < 0:
+            pos = -self.startAdjustment * f.getframerate() // 1000
+            #mylog(f"pos={pos}")
+            try:
+                f.setpos(pos)
+            except wave.Error:
+                f.setpos(f.getnframes() - 1)
         fileWavePlayer = self.fileWavePlayer
+        fileWavePlayer.stop()
         fileWavePlayer.feed(f.readframes(f.getnframes()))
         fileWavePlayer.idle()
 
     def getDuration(self):
         frames = self.f.getnframes()
         rate = self.f.getframerate()
-        return int(1000 * frames / rate)
+        wavMillis = int(1000 * frames / rate)
+        result = wavMillis + self.startAdjustment + self.endAdjustment
+        return max(0, result)
 
     def __repr__(self):
         return "PpWaveFileCommand(%r)" % self.fileName
@@ -246,15 +315,20 @@ class PpChainCommand(PpSynchronousCommand):
         self.subcommands = subcommands
 
     def run(self):
-        thread1 = threading.Thread(target = self.threadFunc)
-        thread1.start()
+        threadPool.add_task(self.threadFunc)
+        #thread1 = threading.Thread(target = self.threadFunc)
+        #thread1.start()
 
     def getDuration(self):
         return sum([subcommand.getDuration() for subcommand in self.subcommands])
 
     def threadFunc(self):
+        timestamp = time.time()
         for subcommand in self.subcommands:
-            subcommand.run()
+            threadPool.add_task(subcommand.run)
+            timestamp += subcommand.getDuration() / 1000
+            sleepTime = timestamp - time.time()
+            time.sleep(sleepTime)
 
     def __repr__(self):
         return f"PpChainCommand({self.subcommands})"
@@ -276,7 +350,7 @@ audioRuleTypes = [
 ]
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive ".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment".split()
     def __init__(
         self,
         comment,
@@ -284,6 +358,8 @@ class AudioRule:
         ruleType,
         wavFile=None,
         builtInWavFile=None,
+        startAdjustment=0,
+        endAdjustment=0,
         tone=None,
         duration=None,
         enabled=True,
@@ -294,6 +370,8 @@ class AudioRule:
         self.ruleType = ruleType
         self.wavFile = wavFile
         self.builtInWavFile = builtInWavFile
+        self.startAdjustment = startAdjustment
+        self.endAdjustment = endAdjustment
         self.tone = tone
         self.duration = duration
         self.enabled = enabled
@@ -323,7 +401,11 @@ class AudioRule:
                 wavFile = os.path.join(getSoundsPath(), self.builtInWavFile)
             else:
                 wavFile = self.wavFile
-            return PpWaveFileCommand(wavFile)
+            return PpWaveFileCommand(
+                wavFile,
+                startAdjustment=self.startAdjustment,
+                endAdjustment=self.endAdjustment
+            )
         elif self.ruleType == audioRuleBeep:
             return PpBeepCommand(self.tone, self.duration)
         else:
@@ -442,9 +524,17 @@ class AudioRuleDialog(wx.Dialog):
       # Translators: This is the button to browse for wav file
         self._browseButton = sHelper.addItem (wx.Button (self, label = _("&Browse...")))
         self._browseButton.Bind(wx.EVT_BUTTON, self._onBrowseClick)
-        #self._browseButton.Disable()
         self.typeControls[audioRuleWave].append(self._browseButton)
-
+      # Translators: label for adjust start
+        label = _("Start adjustment in millis - positive for extra pause, negative for cut-off")
+        self.startAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+        self.typeControls[audioRuleWave].append(self.startAdjustmentTextCtrl)        
+        self.typeControls[audioRuleBuiltInWave].append(self.startAdjustmentTextCtrl)        
+      # Translators: label for adjust end
+        label = _("End adjustment in millis - positive for extra pause, negative for cut-off")
+        self.endAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+        self.typeControls[audioRuleWave].append(self.endAdjustmentTextCtrl)        
+        self.typeControls[audioRuleBuiltInWave].append(self.endAdjustmentTextCtrl)        
       # Translators: label for tone
         toneLabelText = _("&Tone")
         self.toneTextCtrl=sHelper.addLabeledControl(toneLabelText, wx.TextCtrl)
@@ -459,6 +549,9 @@ class AudioRuleDialog(wx.Dialog):
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
+      # Translators: This is the button to test audio rule
+        self.testButton = sHelper.addItem (wx.Button (self, label = _("&Test")))
+        self.testButton.Bind(wx.EVT_BUTTON, self.onTestClick)        
 
         sHelper.addDialogDismissButtons(self.CreateButtonSizer(wx.OK|wx.CANCEL))
 
@@ -489,12 +582,14 @@ class AudioRuleDialog(wx.Dialog):
         self.setType(rule.ruleType)
         self.wavName.SetValue(rule.wavFile)
         self.setBiw(rule.builtInWavFile)
+        self.startAdjustmentTextCtrl.SetValue(str(rule.startAdjustment or 0))
+        self.endAdjustmentTextCtrl.SetValue(str(rule.endAdjustment or 0))
         self.toneTextCtrl.SetValue(str(rule.tone or 500))
         self.durationTextCtrl.SetValue(str(rule.duration or 50))
         self.enabledCheckBox.SetValue(rule.enabled)
         self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
-
-    def onOk(self,evt):
+        
+    def makeRule(self):
         if not self.patternTextCtrl.GetValue():
             # Translators: This is an error message to let the user know that the pattern field is not valid.
             gui.messageBox(_("A pattern is required."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
@@ -502,12 +597,14 @@ class AudioRuleDialog(wx.Dialog):
             return
         # TODO: more validation
         try:
-            self.rule=AudioRule(
+            return AudioRule(
                 comment=self.commentTextCtrl.GetValue(),
                 pattern=self.patternTextCtrl.GetValue(),
                 ruleType=self.getType(),
                 wavFile=self.wavName.GetValue(),
                 builtInWavFile=self.getBiw(),
+                startAdjustment=self.getInt(self.startAdjustmentTextCtrl.GetValue()),
+                endAdjustment=self.getInt(self.endAdjustmentTextCtrl.GetValue()),
                 tone=self.getInt(self.toneTextCtrl.GetValue()),
                 duration=self.getInt(self.durationTextCtrl.GetValue()),
                 enabled=bool(self.enabledCheckBox.GetValue()),
@@ -522,7 +619,13 @@ class AudioRuleDialog(wx.Dialog):
                 wx.OK|wx.ICON_WARNING, self
             )
             return
-        evt.Skip()
+    
+
+    def onOk(self,evt):
+        rule = self.makeRule()
+        if rule is not None:
+            self.rule = rule
+            evt.Skip()
 
     def _onBrowseClick(self, evt):
         p= 'c:'
@@ -536,6 +639,20 @@ class AudioRuleDialog(wx.Dialog):
             p = fd.GetPath()
             self.wavName.SetValue(p)
             break
+            
+    def onTestClick(self, evt):
+        global rulesDialogOpen
+        rulesDialogOpen = False
+        try:
+            rule = self.makeRule()
+            if rule is None:
+                return
+            preText = _("Hello")
+            postText = _("world")
+            utterance = [preText, rule.getSpeechCommand(), postText]
+            speech.speak(utterance)
+        finally:
+            rulesDialogOpen = True
 
     def getBiwCategories(self):
         soundsPath = getSoundsPath()
