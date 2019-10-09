@@ -13,6 +13,7 @@ import copy
 import ctypes
 from ctypes import create_string_buffer, byref
 import globalPluginHandler
+import globalVars
 import gui
 from gui import guiHelper, nvdaControls
 import itertools
@@ -52,7 +53,7 @@ def mylog(s):
 def myAssert(condition):
     if not condition:
         raise RuntimeError("Assertion failed")
-        
+
 class Worker(Thread):
     """ Thread executing tasks from a given tasks queue """
     def __init__(self, tasks):
@@ -101,7 +102,7 @@ class ThreadPool:
         """ Wait for completion of all the tasks in the queue """
         self.tasks.join()
 
-        
+
 threadPool = ThreadPool(5)
 pp = "phoneticpunctuation"
 defaultRules = """
@@ -230,11 +231,9 @@ defaultRules = """
     ]
 """.replace("\\", "\\\\")
 def initConfiguration():
-
     confspec = {
-        "prePause" : "integer( default=1, min=0, max=60000)",
+        "enabled" : "boolean( default=True)",
         "rules" : "string( default='')",
-        "applicationsBlacklist" : "string( default='audacity')",
     }
     config.conf.spec[pp] = confspec
 
@@ -245,6 +244,8 @@ ppSynchronousPlayer = nvwave.WavePlayer(channels=2, samplesPerSec=int(tones.SAMP
 
 class PpSynchronousCommand(speech.commands.BaseCallbackCommand):
     def getDuration(self):
+        raise NotImplementedError()
+    def terminate(self):
         raise NotImplementedError()
 
 class PpBeepCommand(PpSynchronousCommand):
@@ -270,6 +271,9 @@ class PpBeepCommand(PpSynchronousCommand):
     def __repr__(self):
         return "PpBeepCommand({hz}, {length}, left={left}, right={right})".format(
             hz=self.hz, length=self.length, left=self.left, right=self.right)
+            
+    def terminate(self):
+        ppSynchronousPlayer.stop()
 
 class PpWaveFileCommand(PpSynchronousCommand):
     def __init__(self, fileName, startAdjustment=0, endAdjustment=0):
@@ -308,16 +312,21 @@ class PpWaveFileCommand(PpSynchronousCommand):
 
     def __repr__(self):
         return "PpWaveFileCommand(%r)" % self.fileName
+        
+    def terminate(self):
+        self.fileWavePlayer.stop()
 
+currentChain = None
 class PpChainCommand(PpSynchronousCommand):
     def __init__(self, subcommands):
         super().__init__()
         self.subcommands = subcommands
+        self.terminated = False
 
     def run(self):
+        global currentChain
+        currentChain = self
         threadPool.add_task(self.threadFunc)
-        #thread1 = threading.Thread(target = self.threadFunc)
-        #thread1.start()
 
     def getDuration(self):
         return sum([subcommand.getDuration() for subcommand in self.subcommands])
@@ -325,13 +334,23 @@ class PpChainCommand(PpSynchronousCommand):
     def threadFunc(self):
         timestamp = time.time()
         for subcommand in self.subcommands:
+            if self.terminated:
+                return
             threadPool.add_task(subcommand.run)
             timestamp += subcommand.getDuration() / 1000
             sleepTime = timestamp - time.time()
             time.sleep(sleepTime)
+        currentChain = None
 
     def __repr__(self):
         return f"PpChainCommand({self.subcommands})"
+        
+    def terminate(self):
+        global currentChain
+        self.terminated = True
+        for subcommand in self.subcommands:
+            subcommand.terminate()
+        currentChain = None
 
 def getSoundsPath():
     globalPluginPath = os.path.abspath(os.path.dirname(__file__))
@@ -433,9 +452,14 @@ class AudioRule:
 
 rulesDialogOpen = False
 rules = []
+rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 def reloadRules():
     global rules
-    rulesConfig = config.conf[pp]["rules"]
+    try:
+        rulesConfig = open(rulesFileName, "r").read()
+    except FileNotFoundError:
+        rulesConfig = defaultRules
+    #rulesConfig = config.conf[pp]["rules"]
     mylog("Loading rules:")
     if len(rulesConfig) == 0:
         mylog("No rules config found, using default one.")
@@ -528,13 +552,13 @@ class AudioRuleDialog(wx.Dialog):
       # Translators: label for adjust start
         label = _("Start adjustment in millis - positive for extra pause, negative for cut-off")
         self.startAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
-        self.typeControls[audioRuleWave].append(self.startAdjustmentTextCtrl)        
-        self.typeControls[audioRuleBuiltInWave].append(self.startAdjustmentTextCtrl)        
+        self.typeControls[audioRuleWave].append(self.startAdjustmentTextCtrl)
+        self.typeControls[audioRuleBuiltInWave].append(self.startAdjustmentTextCtrl)
       # Translators: label for adjust end
         label = _("End adjustment in millis - positive for extra pause, negative for cut-off")
         self.endAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
-        self.typeControls[audioRuleWave].append(self.endAdjustmentTextCtrl)        
-        self.typeControls[audioRuleBuiltInWave].append(self.endAdjustmentTextCtrl)        
+        self.typeControls[audioRuleWave].append(self.endAdjustmentTextCtrl)
+        self.typeControls[audioRuleBuiltInWave].append(self.endAdjustmentTextCtrl)
       # Translators: label for tone
         toneLabelText = _("&Tone")
         self.toneTextCtrl=sHelper.addLabeledControl(toneLabelText, wx.TextCtrl)
@@ -551,7 +575,7 @@ class AudioRuleDialog(wx.Dialog):
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
       # Translators: This is the button to test audio rule
         self.testButton = sHelper.addItem (wx.Button (self, label = _("&Test")))
-        self.testButton.Bind(wx.EVT_BUTTON, self.onTestClick)        
+        self.testButton.Bind(wx.EVT_BUTTON, self.onTestClick)
 
         sHelper.addDialogDismissButtons(self.CreateButtonSizer(wx.OK|wx.CANCEL))
 
@@ -588,7 +612,7 @@ class AudioRuleDialog(wx.Dialog):
         self.durationTextCtrl.SetValue(str(rule.duration or 50))
         self.enabledCheckBox.SetValue(rule.enabled)
         self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
-        
+
     def makeRule(self):
         if not self.patternTextCtrl.GetValue():
             # Translators: This is an error message to let the user know that the pattern field is not valid.
@@ -619,7 +643,7 @@ class AudioRuleDialog(wx.Dialog):
                 wx.OK|wx.ICON_WARNING, self
             )
             return
-    
+
 
     def onOk(self,evt):
         rule = self.makeRule()
@@ -639,7 +663,7 @@ class AudioRuleDialog(wx.Dialog):
             p = fd.GetPath()
             self.wavName.SetValue(p)
             break
-            
+
     def onTestClick(self, evt):
         global rulesDialogOpen
         rulesDialogOpen = False
@@ -819,7 +843,12 @@ class RulesDialog(gui.SettingsDialog):
         rulesDialogOpen = False
         rulesDicts = [rule.asDict() for rule in self.rules]
         rulesJson = json.dumps(rulesDicts, indent=4, sort_keys=True)
-        config.conf[pp]["rules"] = rulesJson
+        #config.conf[pp]["rules"] = rulesJson
+        rulesFile = open(rulesFileName, "w")
+        try:
+            rulesFile.write(rulesJson)
+        finally:
+            rulesFile.close()
         reloadRules()
         super().onOk(evt)
 
@@ -828,6 +857,76 @@ class RulesDialog(gui.SettingsDialog):
         rulesDialogOpen = False
         super().onCancel(evt)
 
+originalSpeechSpeak = None
+originalSpeechCancel = None
+
+def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
+    if config.conf[pp]["enabled"] and not rulesDialogOpen:
+        if symbolLevel is None:
+            symbolLevel=config.conf["speech"]["symbolLevel"]
+        newSequence = []
+        newSequence = speechSequence
+        for rule in rules:
+            newSequence = processRule(newSequence, rule, symbolLevel)
+        newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
+    else:
+        newSequence = speechSequence
+    return originalSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
+    
+def preCancelSpeech(*args, **kwargs):
+    localCurrentChain = currentChain
+    if localCurrentChain is not None:
+        localCurrentChain.terminate()
+    originalSpeechCancel(*args, **kwargs)
+
+def processRule(speechSequence, rule, symbolLevel):
+    newSequence = []
+    for command in speechSequence:
+        if isinstance(command, str):
+            newSequence.extend(rule.processString(command))
+        else:
+            newSequence.append(command)
+    return newSequence
+
+def postProcessSynchronousCommands(speechSequence, symbolLevel):
+    language=speech.getCurrentLanguage()
+    speechSequence = [element for element in speechSequence
+        if not isinstance(element, str)
+        or not speech.isBlank(speech.processText(language,element,symbolLevel))
+    ]
+
+    newSequence = []
+    for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
+        if isSynchronous:
+            chain = PpChainCommand(list(values))
+            duration = chain.getDuration()
+            newSequence.append(chain)
+            newSequence.append(speech.commands.BreakCommand(duration))
+        else:
+            newSequence.extend(values)
+    newSequence = eloquenceFix(newSequence, language, symbolLevel)
+    return newSequence
+
+def eloquenceFix(speechSequence, language, symbolLevel):
+    """
+    With some versions of eloquence driver, when the entire utterance has been replaced with audio icons, and therefore there is nothing else to speak,
+    the driver for some reason issues the callback command after the break command, not before.
+    To work around this, we detect this case and remove break command completely.
+    """
+    nonEmpty = [element for element in speechSequence
+        if  isinstance(element, str)
+        and not speech.isBlank(speech.processText(language,element,symbolLevel))
+    ]
+    if len(nonEmpty) > 0:
+        return speechSequence
+    indicesToRemove = []
+    for i in range(1, len(speechSequence)):
+        if  (
+            isinstance(speechSequence[i], speech.commands.BreakCommand)
+            and isinstance(speechSequence[i-1], PpChainCommand)
+        ):
+            indicesToRemove.append(i)
+    return [speechSequence[i] for i in range(len(speechSequence)) if i not in indicesToRemove]
 
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
@@ -850,121 +949,22 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.restoreSpeechInterceptor()
 
     def injectSpeechInterceptor(self):
-        self.originalSpeechSpeak = speech.speak
-        speech.speak = lambda speechSequence, symbolLevel=None, *args, **kwargs: self.preSpeak(speechSequence, symbolLevel, *args, **kwargs)
-        self.originalManagerSpeak = speech.manager.SpeechManager.speak
-        speech.manager.SpeechManager.speak = lambda selfself, speechSequence, *args, **kwargs: self.postSpeak(selfself, speechSequence, *args, **kwargs)
+        global originalSpeechSpeak, originalSpeechCancel
+        originalSpeechSpeak = speech.speak
+        speech.speak = preSpeak
+        originalSpeechCancel = speech.cancelSpeech
+        speech.cancelSpeech = preCancelSpeech
 
     def  restoreSpeechInterceptor(self):
-        speech.speak = self.originalSpeechSpeak
-        speech.manager.SpeechManager.speak = self.originalManagerSpeak
-
-    def preSpeak(self, speechSequence, symbolLevel=None, *args, **kwargs):
-        if self.enabled and not rulesDialogOpen:
-            if symbolLevel is None:
-                symbolLevel=config.conf["speech"]["symbolLevel"]
-            newSequence = []
-            if False:
-                for element in speechSequence:
-                    if type(element) == str:
-                        newSequence.extend(self.test(element, symbolLevel))
-                    else:
-                        newSequence.append(element)
-            newSequence = speechSequence
-            for rule in rules:
-                newSequence = self.processRule(newSequence, rule, symbolLevel)
-            newSequence = self.postProcessSynchronousCommands(newSequence, symbolLevel)
-        else:
-            newSequence = speechSequence
-        return self.originalSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
-
-    def postSpeak(self, selfself, speechSequence, *args, **kwargs):
-        return self.originalManagerSpeak(selfself, speechSequence, *args, **kwargs)
+        global originalSpeechSpeak, originalSpeechCancel
+        speech.speak = originalSpeechSpeak
+        speech.cancelSpeech = originalSpeechCancel
 
     @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
     def script_togglePp(self, gesture):
-        self.enabled = not self.enabled
-        if self.enabled:
+        config.conf[pp]["enabled"] = not config.conf[pp]["enabled"]
+        if config.conf[pp]["enabled"]:
             msg = _("Phonetic punctuation on")
         else:
             msg = _("Phonetic punctuation off")
         ui.message(msg)
-
-
-    def getWavLengthMillis(self, fileName):
-        return int(1000 * os.path.getsize(fileName) / tones.SAMPLE_RATE / 4)
-
-
-    def test(self, s, symbolLevel):
-        wav = "H:\\drp\\work\\emacspeak\\sounds\\classic\\alarm.wav"
-        wavLength = self.getWavLengthMillis(wav)
-        language=speech.getCurrentLanguage()
-        tone = 500
-
-        while "!" in s:
-            index = s.index("!")
-            prefix = s[:index]
-            prefix = prefix.lstrip()
-            pPrefix = speech.processText(language,prefix,symbolLevel)
-            if speech.isBlank(pPrefix):
-                pass
-            else:
-                yield  prefix
-            #yield speech.commands.WaveFileCommand(wav)
-            #yield speech.commands.BeepCommand(tone, 100)
-            #yield PpBeepCommand(tone, 100)
-            yield PpWaveFileCommand(wav)
-            tone += 50
-            #yield speech.commands.BreakCommand(100)
-            s = s[index + 1:]
-        if len(s) > 0:
-            yield s
-
-    def processRule(self, speechSequence, rule, symbolLevel):
-        newSequence = []
-        for command in speechSequence:
-            if isinstance(command, str):
-                newSequence.extend(rule.processString(command))
-            else:
-                newSequence.append(command)
-        return newSequence
-
-    def postProcessSynchronousCommands(self, speechSequence, symbolLevel):
-        language=speech.getCurrentLanguage()
-        speechSequence = [element for element in speechSequence
-            if not isinstance(element, str)
-            or not speech.isBlank(speech.processText(language,element,symbolLevel))
-        ]
-
-        newSequence = []
-        for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
-            if isSynchronous:
-                chain = PpChainCommand(list(values))
-                duration = chain.getDuration()
-                newSequence.append(chain)
-                newSequence.append(speech.commands.BreakCommand(duration))
-            else:
-                newSequence.extend(values)
-        newSequence = self.eloquenceFix(newSequence, language, symbolLevel)
-        return newSequence
-
-    def eloquenceFix(self, speechSequence, language, symbolLevel):
-        """
-        With some versions of eloquence driver, when the entire utterance has been replaced with audio icons, and therefore there is nothing else to speak,
-        the driver for some reason issues the callback command after the break command, not before.
-        To work around this, we detect this case and remove break command completely.
-        """
-        nonEmpty = [element for element in speechSequence
-            if  isinstance(element, str)
-            and not speech.isBlank(speech.processText(language,element,symbolLevel))
-        ]
-        if len(nonEmpty) > 0:
-            return speechSequence
-        indicesToRemove = []
-        for i in range(1, len(speechSequence)):
-            if  (
-                isinstance(speechSequence[i], speech.commands.BreakCommand)
-                and isinstance(speechSequence[i-1], PpChainCommand)
-            ):
-                indicesToRemove.append(i)
-        return [speechSequence[i] for i in range(len(speechSequence)) if i not in indicesToRemove]
