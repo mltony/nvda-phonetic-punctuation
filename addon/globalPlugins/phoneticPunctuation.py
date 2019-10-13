@@ -30,6 +30,7 @@ import sayAllHandler
 from scriptHandler import script, willSayAllResume
 import speech
 import speech.commands
+import sre_constants
 import struct
 import textInfos
 import threading
@@ -64,17 +65,13 @@ class Worker(Thread):
         self.start()
 
     def run(self):
-        mylog("Worker.run")
         while True:
             func, args, kargs = self.tasks.get()
-            mylog("Worker - task received")
             try:
                 func(*args, **kargs)
             except Exception as e:
                 # An exception happened in this thread
-                mylog(e)
                 log.error("Error in ThreadPool ", e)
-                #print(e)
             finally:
                 # Mark this task as done, whether an exception happened or not
                 self.tasks.task_done()
@@ -271,7 +268,7 @@ class PpBeepCommand(PpSynchronousCommand):
     def __repr__(self):
         return "PpBeepCommand({hz}, {length}, left={left}, right={right})".format(
             hz=self.hz, length=self.length, left=self.left, right=self.right)
-            
+
     def terminate(self):
         ppSynchronousPlayer.stop()
 
@@ -289,11 +286,10 @@ class PpWaveFileCommand(PpSynchronousCommand):
     def run(self):
         f = self.f
         f.rewind()
-        if self.startAdjustment > 0:
-            time.sleep(self.startAdjustment / 1000.0)
-        elif self.startAdjustment < 0:
-            pos = -self.startAdjustment * f.getframerate() // 1000
-            #mylog(f"pos={pos}")
+        if self.startAdjustment < 0:
+            time.sleep(-self.startAdjustment / 1000.0)
+        elif self.startAdjustment > 0:
+            pos = self.startAdjustment * f.getframerate() // 1000
             try:
                 f.setpos(pos)
             except wave.Error:
@@ -307,12 +303,12 @@ class PpWaveFileCommand(PpSynchronousCommand):
         frames = self.f.getnframes()
         rate = self.f.getframerate()
         wavMillis = int(1000 * frames / rate)
-        result = wavMillis + self.startAdjustment + self.endAdjustment
+        result = wavMillis - self.startAdjustment - self.endAdjustment
         return max(0, result)
 
     def __repr__(self):
         return "PpWaveFileCommand(%r)" % self.fileName
-        
+
     def terminate(self):
         self.fileWavePlayer.stop()
 
@@ -344,7 +340,7 @@ class PpChainCommand(PpSynchronousCommand):
 
     def __repr__(self):
         return f"PpChainCommand({self.subcommands})"
-        
+
     def terminate(self):
         global currentChain
         self.terminated = True
@@ -430,20 +426,23 @@ class AudioRule:
         else:
             raise ValueError()
 
-    def processString(self, s):
+    def processString(self, s, *args, **kwargs):
         if not self.enabled:
             yield s
             return
-        for command in self.processStringInternal(s):
+        for command in self.processStringInternal(s, *args, **kwargs):
             if isinstance(command, str):
                 if len(command) > 0:
                     yield command
             else:
                 yield command
 
-    def processStringInternal(self, s):
+    def processStringInternal(self, s, symbolLevel, language):
         index = 0
         for match in self.regexp.finditer(s):
+            if speech.isBlank(speech.processText(language,match.group(0), symbolLevel)):
+                # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.  
+                continue
             yield s[index:match.start(0)]
             yield self.speechCommand
             index = match.end(0)
@@ -459,16 +458,17 @@ def reloadRules():
         rulesConfig = open(rulesFileName, "r").read()
     except FileNotFoundError:
         rulesConfig = defaultRules
-    #rulesConfig = config.conf[pp]["rules"]
     mylog("Loading rules:")
     if len(rulesConfig) == 0:
         mylog("No rules config found, using default one.")
         rulesConfig = defaultRules
     mylog(rulesConfig)
-    rules = [
-        AudioRule(**ruleDict)
-        for ruleDict in json.loads(rulesConfig)
-    ]
+    rules = []
+    for ruleDict in json.loads(rulesConfig):
+        try:
+            rules.append(AudioRule(**ruleDict))
+        except Exception as e:
+            log.error("Failed to load audio rule", e)
 
 
 initConfiguration()
@@ -485,7 +485,7 @@ class AudioRuleDialog(wx.Dialog):
     TYPE_LABELS_ORDERING = audioRuleTypes
 
     def __init__(self, parent, title=_("Edit audio rule")):
-        #self.biws = self.getBuiltInWaveFiles()
+        self.lastTestTime = 0
         super(AudioRuleDialog,self).__init__(parent,title=title)
         mainSizer=wx.BoxSizer(wx.VERTICAL)
         sHelper = guiHelper.BoxSizerHelper(self, orientation=wx.VERTICAL)
@@ -550,12 +550,12 @@ class AudioRuleDialog(wx.Dialog):
         self._browseButton.Bind(wx.EVT_BUTTON, self._onBrowseClick)
         self.typeControls[audioRuleWave].append(self._browseButton)
       # Translators: label for adjust start
-        label = _("Start adjustment in millis - positive for extra pause, negative for cut-off")
+        label = _("Start adjustment in millis - positive to cut off start, negative for extra pause in the beginning.")
         self.startAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
         self.typeControls[audioRuleWave].append(self.startAdjustmentTextCtrl)
         self.typeControls[audioRuleBuiltInWave].append(self.startAdjustmentTextCtrl)
       # Translators: label for adjust end
-        label = _("End adjustment in millis - positive for extra pause, negative for cut-off")
+        label = _("End adjustment in millis - positive for early cut off, negative for extra pause in the end")
         self.endAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
         self.typeControls[audioRuleWave].append(self.endAdjustmentTextCtrl)
         self.typeControls[audioRuleBuiltInWave].append(self.endAdjustmentTextCtrl)
@@ -574,7 +574,7 @@ class AudioRuleDialog(wx.Dialog):
         commentLabelText = _("&Comment")
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
       # Translators: This is the button to test audio rule
-        self.testButton = sHelper.addItem (wx.Button (self, label = _("&Test")))
+        self.testButton = sHelper.addItem (wx.Button (self, label = _("&Test, press twice for repeated sound")))
         self.testButton.Bind(wx.EVT_BUTTON, self.onTestClick)
 
         sHelper.addDialogDismissButtons(self.CreateButtonSizer(wx.OK|wx.CANCEL))
@@ -619,7 +619,65 @@ class AudioRuleDialog(wx.Dialog):
             gui.messageBox(_("A pattern is required."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
             self.patternTextCtrl.SetFocus()
             return
-        # TODO: more validation
+        try:
+            re.compile(self.patternTextCtrl.GetValue())
+        except sre_constants.error:
+            # Translators: Invalid regular expression
+            gui.messageBox(_("Invalid regular expression."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+            self.patternTextCtrl.SetFocus()
+            return
+
+        if self.getType() == audioRuleWave:
+            if not self.wavName.GetValue() or not os.path.exists(self.wavName.GetValue()):
+                # Translators: wav file not found
+                gui.messageBox(_("Wav file not found."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.wavName.SetFocus()
+                return
+            try:
+                wave.open(self.wavName.GetValue(), "r").close()
+            except wave.Error:
+                # Translators: Invalid wav file
+                gui.messageBox(_("Invalid wav file."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.wavName.SetFocus()
+                return
+        try:
+            self.getInt(self.startAdjustmentTextCtrl.GetValue())
+        except ValueError:
+            # Translators: Invalid regular expression
+            gui.messageBox(_("Start adjustment must be a number."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+            self.startAdjustmentTextCtrl.SetFocus()
+            return
+        try:
+            self.getInt(self.endAdjustmentTextCtrl.GetValue())
+        except ValueError:
+            # Translators: Invalid regular expression
+            gui.messageBox(_("End adjustment must be a number."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+            self.endAdjustmentTextCtrl.SetFocus()
+            return
+        if self.getType() == audioRuleBeep:
+            good = False
+            try:
+                tone = self.getInt(self.toneTextCtrl.GetValue())
+                if 0 <= tone <= 50000:
+                    good = True
+            except ValueError:
+                pass
+            if not good:
+                gui.messageBox(_("tone must be an integer between 0 and 50000"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.toneTextCtrl.SetFocus()
+                return
+
+            good = False
+            try:
+                duration = self.getInt(self.durationTextCtrl.GetValue())
+                if 0 <= duration <= 60000:
+                    good = True
+            except ValueError:
+                pass
+            if not good:
+                gui.messageBox(_("duration must be an integer between 0 and 60000"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.durationTextCtrl.SetFocus()
+                return
         try:
             return AudioRule(
                 comment=self.commentTextCtrl.GetValue(),
@@ -666,6 +724,12 @@ class AudioRuleDialog(wx.Dialog):
 
     def onTestClick(self, evt):
         global rulesDialogOpen
+        if time.time() - self.lastTestTime < 1:
+            # Button pressed twice within a second
+            repeat = True
+        else:
+            repeat = False
+        self.lastTestTime = time.time()
         rulesDialogOpen = False
         try:
             rule = self.makeRule()
@@ -673,7 +737,11 @@ class AudioRuleDialog(wx.Dialog):
                 return
             preText = _("Hello")
             postText = _("world")
-            utterance = [preText, rule.getSpeechCommand(), postText]
+            if not repeat:
+                utterance = [preText, rule.getSpeechCommand(), postText]
+            else:
+                utterance = [preText] + [rule.getSpeechCommand()] * 3 + [postText]
+            speech.cancelSpeech()
             speech.speak(utterance)
         finally:
             rulesDialogOpen = True
@@ -864,7 +932,6 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
     if config.conf[pp]["enabled"] and not rulesDialogOpen:
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
-        newSequence = []
         newSequence = speechSequence
         for rule in rules:
             newSequence = processRule(newSequence, rule, symbolLevel)
@@ -872,7 +939,7 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
     else:
         newSequence = speechSequence
     return originalSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
-    
+
 def preCancelSpeech(*args, **kwargs):
     localCurrentChain = currentChain
     if localCurrentChain is not None:
@@ -880,10 +947,11 @@ def preCancelSpeech(*args, **kwargs):
     originalSpeechCancel(*args, **kwargs)
 
 def processRule(speechSequence, rule, symbolLevel):
+    language=speech.getCurrentLanguage()
     newSequence = []
     for command in speechSequence:
         if isinstance(command, str):
-            newSequence.extend(rule.processString(command))
+            newSequence.extend(rule.processString(command, symbolLevel, language))
         else:
             newSequence.append(command)
     return newSequence
@@ -936,7 +1004,6 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         super(GlobalPlugin, self).__init__(*args, **kwargs)
         self.createMenu()
         self.injectSpeechInterceptor()
-        self.enabled = True
 
     def createMenu(self):
         def _popupMenu(evt):
@@ -947,6 +1014,8 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
 
     def terminate(self):
         self.restoreSpeechInterceptor()
+        prefMenu = gui.mainFrame.sysTrayIcon.preferencesMenu
+        prefMenu.Remove(self.prefsMenuItem)
 
     def injectSpeechInterceptor(self):
         global originalSpeechSpeak, originalSpeechCancel
