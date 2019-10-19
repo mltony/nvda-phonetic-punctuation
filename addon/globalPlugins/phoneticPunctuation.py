@@ -841,7 +841,9 @@ class RulesDialog(gui.SettingsDialog):
       # Buttons
         bHelper = sHelper.addItem(guiHelper.ButtonHelper(orientation=wx.HORIZONTAL))
         self.moveUpButton = bHelper.addButton(self, label=_("Move &up"))
+        self.moveUpButton.Bind(wx.EVT_BUTTON, lambda evt: self.OnMoveClick(evt, -1))
         self.moveDownButton = bHelper.addButton(self, label=_("Move &down"))
+        self.moveDownButton.Bind(wx.EVT_BUTTON, lambda evt: self.OnMoveClick(evt, 1))
         self.addAudioButton = bHelper.addButton(self, label=_("Add &audio rule"))
         self.addAudioButton.Bind(wx.EVT_BUTTON, self.OnAddClick)
         self.editButton = bHelper.addButton(self, label=_("Edi&t"))
@@ -897,6 +899,26 @@ class RulesDialog(gui.SettingsDialog):
         entryDialog.Destroy()
 
 
+
+    def OnMoveClick(self,evt, increment):
+        if self.rulesList.GetSelectedItemCount()!=1:
+            return
+        index=self.rulesList.GetFirstSelected()
+        if index<0:
+            return
+        newIndex = index + increment
+        if 0 <= newIndex < len(self.rules):
+            # Swap
+            tmp = self.rules[index]
+            self.rules[index] = self.rules[newIndex]
+            self.rules[newIndex] = tmp
+            self.rulesList.Select(newIndex)
+            self.rulesList.Focus(newIndex)
+        else:
+            return
+            
+    def OnToggleEnable(self,evt, increment):
+        pass
 
     def OnRemoveClick(self,evt):
         index=self.rulesList.GetFirstSelected()
