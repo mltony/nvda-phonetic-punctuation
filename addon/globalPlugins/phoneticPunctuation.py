@@ -10,6 +10,7 @@ import bisect
 import config
 import controlTypes
 import copy
+import core
 import ctypes
 from ctypes import create_string_buffer, byref
 import globalPluginHandler
@@ -41,7 +42,7 @@ import ui
 import wave
 import wx
 
-debug = True
+debug = False
 if debug:
     f = open("C:\\Users\\tony\\Dropbox\\1.txt", "w")
     LOG_MUTEX = threading.Lock()
@@ -58,7 +59,6 @@ def myAssert(condition):
 class Worker(Thread):
     """ Thread executing tasks from a given tasks queue """
     def __init__(self, tasks):
-        mylog("Worker.__init__")
         Thread.__init__(self)
         self.tasks = tasks
         self.daemon = True
@@ -80,7 +80,6 @@ class Worker(Thread):
 class ThreadPool:
     """ Pool of threads consuming tasks from a queue """
     def __init__(self, num_threads):
-        mylog("ThreadPool.__init__")
         self.tasks = Queue(num_threads)
         for _ in range(num_threads):
             Worker(self.tasks)
@@ -108,11 +107,13 @@ defaultRules = """
             "builtInWavFile": "3d\\item.wav",
             "caseSensitive": false,
             "comment": "",
-            "duration": null,
+            "duration": 50,
             "enabled": true,
+            "endAdjustment": 100,
             "pattern": "!",
             "ruleType": "builtInWave",
-            "tone": null,
+            "startAdjustment": 0,
+            "tone": 500,
             "wavFile": ""
         },
         {
@@ -120,53 +121,11 @@ defaultRules = """
             "caseSensitive": false,
             "comment": "",
             "duration": 50,
-            "enabled": true,
+            "enabled": false,
+            "endAdjustment": 0,
             "pattern": "@",
             "ruleType": "builtInWave",
-            "tone": 500,
-            "wavFile": ""
-        },
-        {
-            "builtInWavFile": "3d\\left.wav",
-            "caseSensitive": false,
-            "comment": "(",
-            "duration": null,
-            "enabled": true,
-            "pattern": "\\(",
-            "ruleType": "builtInWave",
-            "tone": null,
-            "wavFile": ""
-        },
-        {
-            "builtInWavFile": "3d\\right.wav",
-            "caseSensitive": false,
-            "comment": ")",
-            "duration": null,
-            "enabled": true,
-            "pattern": "\\)",
-            "ruleType": "builtInWave",
-            "tone": null,
-            "wavFile": ""
-        },
-        {
-            "builtInWavFile": "3d\\network-up.wav",
-            "caseSensitive": false,
-            "comment": "[",
-            "duration": 50,
-            "enabled": true,
-            "pattern": "\\[",
-            "ruleType": "builtInWave",
-            "tone": 500,
-            "wavFile": ""
-        },
-        {
-            "builtInWavFile": "3d\\network-down.wav",
-            "caseSensitive": false,
-            "comment": "]",
-            "duration": 50,
-            "enabled": true,
-            "pattern": "\\]",
-            "ruleType": "builtInWave",
+            "startAdjustment": 0,
             "tone": 500,
             "wavFile": ""
         },
@@ -175,9 +134,11 @@ defaultRules = """
             "caseSensitive": false,
             "comment": "...",
             "duration": null,
-            "enabled": true,
+            "enabled": false,
+            "endAdjustment": 0,
             "pattern": "\\.{3,}",
             "ruleType": "builtInWave",
+            "startAdjustment": 0,
             "tone": null,
             "wavFile": ""
         },
@@ -187,8 +148,10 @@ defaultRules = """
             "comment": ".",
             "duration": 50,
             "enabled": true,
+            "endAdjustment": 50,
             "pattern": "\\.",
             "ruleType": "builtInWave",
+            "startAdjustment": 0,
             "tone": 500,
             "wavFile": ""
         },
@@ -196,32 +159,90 @@ defaultRules = """
             "builtInWavFile": "chimes\\delete-object.wav",
             "caseSensitive": false,
             "comment": "",
-            "duration": null,
+            "duration": 50,
             "enabled": true,
+            "endAdjustment": 100,
             "pattern": ",",
             "ruleType": "builtInWave",
-            "tone": null,
+            "startAdjustment": 5,
+            "tone": 500,
             "wavFile": ""
         },
         {
             "builtInWavFile": "chimes\\yank-object.wav",
             "caseSensitive": false,
             "comment": "?",
-            "duration": null,
-            "enabled": true,
+            "duration": 50,
+            "enabled": false,
+            "endAdjustment": 0,
             "pattern": "\\?",
             "ruleType": "builtInWave",
-            "tone": null,
+            "startAdjustment": 0,
+            "tone": 500,
             "wavFile": ""
         },
         {
             "builtInWavFile": "3d\\window-resize.wav",
             "caseSensitive": true,
-            "comment": "blank",
+            "comment": "",
             "duration": 50,
             "enabled": true,
+            "endAdjustment": 0,
             "pattern": "^blank$",
             "ruleType": "builtInWave",
+            "startAdjustment": 0,
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\left.wav",
+            "caseSensitive": false,
+            "comment": "(",
+            "duration": 50,
+            "enabled": false,
+            "endAdjustment": 100,
+            "pattern": "\\(",
+            "ruleType": "builtInWave",
+            "startAdjustment": 0,
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\right.wav",
+            "caseSensitive": false,
+            "comment": ")",
+            "duration": 50,
+            "enabled": false,
+            "endAdjustment": 100,
+            "pattern": "\\)",
+            "ruleType": "builtInWave",
+            "startAdjustment": 0,
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\network-up.wav",
+            "caseSensitive": false,
+            "comment": "[",
+            "duration": 50,
+            "enabled": false,
+            "endAdjustment": 400,
+            "pattern": "\\[",
+            "ruleType": "builtInWave",
+            "startAdjustment": 25,
+            "tone": 500,
+            "wavFile": ""
+        },
+        {
+            "builtInWavFile": "3d\\network-down.wav",
+            "caseSensitive": false,
+            "comment": "]",
+            "duration": 50,
+            "enabled": false,
+            "endAdjustment": 400,
+            "pattern": "\\]",
+            "ruleType": "builtInWave",
+            "startAdjustment": 25,
             "tone": 500,
             "wavFile": ""
         }
@@ -441,7 +462,7 @@ class AudioRule:
         index = 0
         for match in self.regexp.finditer(s):
             if speech.isBlank(speech.processText(language,match.group(0), symbolLevel)):
-                # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.  
+                # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.
                 continue
             yield s[index:match.start(0)]
             yield self.speechCommand
@@ -840,6 +861,8 @@ class RulesDialog(gui.SettingsDialog):
         self.rulesList.ItemCount = len(self.rules)
       # Buttons
         bHelper = sHelper.addItem(guiHelper.ButtonHelper(orientation=wx.HORIZONTAL))
+        self.toggleButton = bHelper.addButton(self, label=_("Toggle"))
+        self.toggleButton.Bind(wx.EVT_BUTTON, self.onToggleClick)
         self.moveUpButton = bHelper.addButton(self, label=_("Move &up"))
         self.moveUpButton.Bind(wx.EVT_BUTTON, lambda evt: self.OnMoveClick(evt, -1))
         self.moveDownButton = bHelper.addButton(self, label=_("Move &down"))
@@ -869,8 +892,27 @@ class RulesDialog(gui.SettingsDialog):
             raise ValueError("Unknown column: %d" % column)
 
     def onListItemFocused(self, evt):
-        pass
+        if self.rulesList.GetSelectedItemCount()!=1:
+            return
+        index=self.rulesList.GetFirstSelected()
+        rule = self.rules[index]
+        if rule.enabled:
+            self.toggleButton.SetLabel(_("&Disable"))
+        else:
+            self.toggleButton.SetLabel(_("&Enable"))
         #evt.Skip()
+
+    def onToggleClick(self,evt):
+        if self.rulesList.GetSelectedItemCount()!=1:
+            return
+        index=self.rulesList.GetFirstSelected()
+        self.rules[index].enabled = not self.rules[index].enabled
+        if self.rules[index].enabled:
+            msg = _("Rule enabled")
+        else:
+            msg = _("Rule disabled")
+        core.callLater(100, lambda: ui.message(msg))
+        self.onListItemFocused(None)
 
     def OnAddClick(self,evt):
         entryDialog=AudioRuleDialog(self,title=_("Add audio rule"))
@@ -916,7 +958,7 @@ class RulesDialog(gui.SettingsDialog):
             self.rulesList.Focus(newIndex)
         else:
             return
-            
+
     def OnToggleEnable(self,evt, increment):
         pass
 
