@@ -25,7 +25,7 @@ Synthesizers known to work well with Phonetic Punctuation:
 * Windows OneCore Voices
 
 Synthesizers known to have problems with PhoneticPunctuation:
-* IBMTTS: see https://github.com/davidacm/NVDA-IBMTTS-Driver/issues/22#issuecomment-541327224
+* IBMTTS: see [this issue](https://github.com/davidacm/NVDA-IBMTTS-Driver/issues/22).
 * RHVoice: Break command is not supported.
 
 ## Copyright notice
