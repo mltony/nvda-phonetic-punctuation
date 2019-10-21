@@ -85,7 +85,6 @@ class ThreadPool:
             Worker(self.tasks)
 
     def add_task(self, func, *args, **kargs):
-        mylog("ThreadPool.add_task")
         """ Add a task to the queue """
         self.tasks.put((func, args, kargs))
 
@@ -254,8 +253,6 @@ def initConfiguration():
         "rules" : "string( default='')",
     }
     config.conf.spec[pp] = confspec
-
-
 
 
 ppSynchronousPlayer = nvwave.WavePlayer(channels=2, samplesPerSec=int(tones.SAMPLE_RATE), bitsPerSample=16, outputDevice=config.conf["speech"]["outputDevice"],wantDucking=True)
@@ -516,8 +513,8 @@ class AudioRuleDialog(wx.Dialog):
         self.patternTextCtrl=sHelper.addLabeledControl(patternLabelText, wx.TextCtrl)
 
       # Translators: label for case sensitivity  checkbox in add audio rule dialog.
-        caseSensitiveText = _("Case &sensitive")
-        self.caseSensitiveCheckBox=sHelper.addItem(wx.CheckBox(self,label=caseSensitiveText))
+        #caseSensitiveText = _("Case &sensitive")
+        #self.caseSensitiveCheckBox=sHelper.addItem(wx.CheckBox(self,label=caseSensitiveText))
 
       # Translators: label for rule_enabled  checkbox in add audio rule dialog.
         enabledText = _("Rule enabled")
@@ -706,8 +703,8 @@ class AudioRuleDialog(wx.Dialog):
                 ruleType=self.getType(),
                 wavFile=self.wavName.GetValue(),
                 builtInWavFile=self.getBiw(),
-                startAdjustment=self.getInt(self.startAdjustmentTextCtrl.GetValue()),
-                endAdjustment=self.getInt(self.endAdjustmentTextCtrl.GetValue()),
+                startAdjustment=self.getInt(self.startAdjustmentTextCtrl.GetValue()) or 0,
+                endAdjustment=self.getInt(self.endAdjustmentTextCtrl.GetValue()) or 0,
                 tone=self.getInt(self.toneTextCtrl.GetValue()),
                 duration=self.getInt(self.durationTextCtrl.GetValue()),
                 enabled=bool(self.enabledCheckBox.GetValue()),
@@ -818,7 +815,6 @@ class AudioRuleDialog(wx.Dialog):
         return   self.getBiwCategories()[self.biwCategory.control.GetSelection()]
 
     def onBiwCategory(self, evt):
-        tones.beep(500, 50)
         soundsPath = getSoundsPath()
         category = self.getBiwCategory()
         self.biwList.control.SetItems(self.getBuiltInWaveFilesInCategory())
@@ -883,7 +879,7 @@ class RulesDialog(gui.SettingsDialog):
         if column == 0:
             return rule.getDisplayName()
         elif column == 1:
-            return "Enabled" if rule.enabled else "Disabled"
+            return _("Enabled") if rule.enabled else _("Disabled")
         elif column == 2:
             return rule.ruleType
         elif column == 3:
@@ -900,7 +896,6 @@ class RulesDialog(gui.SettingsDialog):
             self.toggleButton.SetLabel(_("&Disable"))
         else:
             self.toggleButton.SetLabel(_("&Enable"))
-        #evt.Skip()
 
     def onToggleClick(self,evt):
         if self.rulesList.GetSelectedItemCount()!=1:
@@ -940,8 +935,6 @@ class RulesDialog(gui.SettingsDialog):
             self.rulesList.SetFocus()
         entryDialog.Destroy()
 
-
-
     def OnMoveClick(self,evt, increment):
         if self.rulesList.GetSelectedItemCount()!=1:
             return
@@ -975,7 +968,6 @@ class RulesDialog(gui.SettingsDialog):
         rulesDialogOpen = False
         rulesDicts = [rule.asDict() for rule in self.rules]
         rulesJson = json.dumps(rulesDicts, indent=4, sort_keys=True)
-        #config.conf[pp]["rules"] = rulesJson
         rulesFile = open(rulesFileName, "w")
         try:
             rulesFile.write(rulesJson)
