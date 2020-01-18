@@ -629,7 +629,7 @@ class AudioRuleDialog(wx.Dialog):
         self.toneTextCtrl.SetValue(str(rule.tone or 500))
         self.durationTextCtrl.SetValue(str(rule.duration or 50))
         self.enabledCheckBox.SetValue(rule.enabled)
-        self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
+        #self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
 
     def makeRule(self):
         if not self.patternTextCtrl.GetValue():
@@ -708,7 +708,7 @@ class AudioRuleDialog(wx.Dialog):
                 tone=self.getInt(self.toneTextCtrl.GetValue()),
                 duration=self.getInt(self.durationTextCtrl.GetValue()),
                 enabled=bool(self.enabledCheckBox.GetValue()),
-                caseSensitive=bool(self.caseSensitiveCheckBox.GetValue()),
+                #caseSensitive=bool(self.caseSensitiveCheckBox.GetValue()),
             )
         except Exception as e:
             log.debugWarning("Could not add Audio Rule", e)
@@ -865,7 +865,7 @@ class RulesDialog(gui.SettingsDialog):
         self.moveDownButton.Bind(wx.EVT_BUTTON, lambda evt: self.OnMoveClick(evt, 1))
         self.addAudioButton = bHelper.addButton(self, label=_("Add &audio rule"))
         self.addAudioButton.Bind(wx.EVT_BUTTON, self.OnAddClick)
-        self.editButton = bHelper.addButton(self, label=_("Edi&t"))
+        self.editButton = bHelper.addButton(self, label=_("&Edit"))
         self.editButton.Bind(wx.EVT_BUTTON, self.OnEditClick)
         self.removeButton = bHelper.addButton(self, label=_("Re&move rule"))
         self.removeButton.Bind(wx.EVT_BUTTON, self.OnRemoveClick)
@@ -893,9 +893,9 @@ class RulesDialog(gui.SettingsDialog):
         index=self.rulesList.GetFirstSelected()
         rule = self.rules[index]
         if rule.enabled:
-            self.toggleButton.SetLabel(_("&Disable"))
+            self.toggleButton.SetLabel(_("Disable (&toggle)"))
         else:
-            self.toggleButton.SetLabel(_("&Enable"))
+            self.toggleButton.SetLabel(_("Enable (&toggle)"))
 
     def onToggleClick(self,evt):
         if self.rulesList.GetSelectedItemCount()!=1:
