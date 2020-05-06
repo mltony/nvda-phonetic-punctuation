@@ -25,8 +25,11 @@ Synthesizers known to work well with Phonetic Punctuation:
 * Windows OneCore Voices
 
 Synthesizers known to have problems with PhoneticPunctuation:
-* IBMTTS: see [this issue](https://github.com/davidacm/NVDA-IBMTTS-Driver/issues/22).
-* RHVoice: Break command is not supported.
+* IBMTTS (as of January 2020): see [this issue](https://github.com/davidacm/NVDA-IBMTTS-Driver/issues/22). Use eloquence_threshold synthesizer instead.
+* RHVoice: Break command is not supported as of January 2020.
 
 ## Copyright notice
-Built-in audio icons were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
+
+Built-in audio icons in 3d, chimes, classic and pan-chimes categories were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
+
+Built-in audio icons in punctuation category were designed by Kara Goldfinch.
