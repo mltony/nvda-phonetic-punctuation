@@ -220,14 +220,14 @@ defaultRules = """
         "wavFile": ""
     },
     {
-        "builtInWavFile": "punctuation\\RightParen.wav",
+        "builtInWavFile": "punctuation\\LeftBracket.wav",
         "caseSensitive": true,
         "comment": "[",
         "duration": 50,
         "enabled": true,
         "endAdjustment": 0,
         "pattern": "\\[",
-        "ruleType": "wave",
+        "ruleType": "builtInWave",
         "startAdjustment": 0,
         "tone": 500,
         "wavFile": "H:\\Downloads\\PhonPuncTest2\\LeftBracket-.wav"
@@ -240,7 +240,7 @@ defaultRules = """
         "enabled": true,
         "endAdjustment": 0,
         "pattern": "\\]",
-        "ruleType": "wave",
+        "ruleType": "builtInWave",
         "startAdjustment": 0,
         "tone": 500,
         "wavFile": "H:\\Downloads\\PhonPuncTest2\\RightBracket-.wav"
