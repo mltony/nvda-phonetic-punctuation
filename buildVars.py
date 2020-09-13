@@ -17,8 +17,8 @@ addon_info = {
 	"addon_summary" : _("Phonetic Punctuation"),
 	# Add-on description
 	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-	"addon_description" : _("""Sentence Navigation addon.
-SentenceNav is an NVDA add-on that allows you to read text by sentences, as opposed to by paragraphs or words."""),
+	"addon_description" : _("""Phonetic punctuation add-on.
+Allows to replace punctuation marks in speech, along with any regular expression patterns with customizable auditory icons. """),
 	# version
 	"addon_version" : "1.2", 
 	# Author(s)
