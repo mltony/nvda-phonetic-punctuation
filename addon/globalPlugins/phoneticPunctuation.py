@@ -194,6 +194,19 @@ defaultRules = """
         "wavFile": ""
     },
     {
+        "builtInWavFile": "punctuation\\Backslash.wav",
+        "caseSensitive": true,
+        "comment": "]",
+        "duration": 361,
+        "enabled": true,
+        "endAdjustment": 0,
+        "pattern": "\\\\",
+        "ruleType": "builtInWave",
+        "startAdjustment": 0,
+        "tone": 500,
+        "wavFile": ".\\Backslash.wav"
+    },
+    {
         "builtInWavFile": "punctuation\\LeftParen.wav",
         "caseSensitive": true,
         "comment": "(",
