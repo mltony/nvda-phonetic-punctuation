@@ -1219,6 +1219,7 @@ class RulesDialog(gui.SettingsDialog):
         super().onCancel(evt)
 
 originalSpeechSpeak = None
+originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
 
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
@@ -1313,15 +1314,23 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         prefMenu.Remove(self.prefsMenuItem)
 
     def injectSpeechInterceptor(self):
-        global originalSpeechSpeak, originalSpeechCancel
+        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel
         originalSpeechSpeak = speech.speak
         speech.speak = preSpeak
+        try:
+            originalSpeechSpeechSpeak = speech.speech.speak
+            speech.speech.speak = preSpeak
+        except AttributeError:
+            originalSpeechSpeechSpeak = None
+        
         originalSpeechCancel = speech.cancelSpeech
         speech.cancelSpeech = preCancelSpeech
 
     def  restoreSpeechInterceptor(self):
-        global originalSpeechSpeak, originalSpeechCancel
+        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel
         speech.speak = originalSpeechSpeak
+        if originalSpeechSpeechSpeak is not None:
+            speech.speech.speak = originalSpeechSpeechSpeak
         speech.cancelSpeech = originalSpeechCancel
 
     @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
