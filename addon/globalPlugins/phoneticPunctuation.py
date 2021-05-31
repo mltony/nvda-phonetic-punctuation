@@ -27,7 +27,6 @@ import operator
 import os
 from queue import Queue
 import re
-import sayAllHandler
 from scriptHandler import script, willSayAllResume
 import speech
 import speech.commands
@@ -348,6 +347,38 @@ defaultRules = """
         "startAdjustment": 0,
         "tone": 500,
         "wavFile": ""
+    },
+    {
+        "builtInWavFile": "",
+        "caseSensitive": true,
+        "comment": "Capital",
+        "duration": 50,
+        "enabled": false,
+        "endAdjustment": 0,
+        "pattern": "(\\b|(?<=[_a-z]))[A-Z][a-z]+(\\b|(?=[_A-Z]))",
+        "prosodyMultiplier": null,
+        "prosodyName": "Pitch",
+        "prosodyOffset": 10,
+        "ruleType": "prosody",
+        "startAdjustment": 0,
+        "tone": 500,
+        "wavFile": ""
+    },
+    {
+        "builtInWavFile": "",
+        "caseSensitive": true,
+        "comment": "ALL_CAPITAL",
+        "duration": 50,
+        "enabled": true,
+        "endAdjustment": 0,
+        "pattern": "(\\b|(?<=[_a-z]))[A-Z]{2,}(\\b|(?=_)|(?=[A-Z][a-z]))",
+        "prosodyMultiplier": null,
+        "prosodyName": "Pitch",
+        "prosodyOffset": 20,
+        "ruleType": "prosody",
+        "startAdjustment": 0,
+        "tone": 500,
+        "wavFile": ""
     }
 ]
 """.replace("\\", "\\\\")
@@ -480,14 +511,16 @@ def getSoundsPath():
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
 audioRuleBeep = "beep"
+audioRuleProsody = "prosody"
 audioRuleTypes = [
     audioRuleBuiltInWave,
     audioRuleWave,
     audioRuleBeep,
+    audioRuleProsody,
 ]
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier".split()
     def __init__(
         self,
         comment,
@@ -501,6 +534,9 @@ class AudioRule:
         duration=None,
         enabled=True,
         caseSensitive=True,
+        prosodyName=None,
+        prosodyOffset=None,
+        prosodyMultiplier=None,
     ):
         self.comment = comment
         self.pattern = pattern
@@ -513,8 +549,11 @@ class AudioRule:
         self.duration = duration
         self.enabled = enabled
         self.caseSensitive = caseSensitive
+        self.prosodyName = prosodyName
+        self.prosodyOffset = prosodyOffset
+        self.prosodyMultiplier = prosodyMultiplier
         self.regexp = re.compile(self.pattern)
-        self.speechCommand = self.getSpeechCommand()
+        self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
         return self.comment or self.pattern
@@ -524,8 +563,10 @@ class AudioRule:
             return f"Wav: {self.wavFile}"
         elif self.ruleType == audioRuleBuiltInWave:
             return self.builtInWavFile
-        elif ruleType == audioRuleBeep:
+        elif self.ruleType == audioRuleBeep:
             return f"Beep: {self.tone}@{self.duration}"
+        elif self.ruleType == audioRuleProsody:
+            return f"Prosody: {self.prosodyName}:{self.prosodyOffset}:{self.prosodyMultiplier}"
         else:
             raise ValueError()
 
@@ -542,9 +583,20 @@ class AudioRule:
                 wavFile,
                 startAdjustment=self.startAdjustment,
                 endAdjustment=self.endAdjustment
-            )
+            ), None
         elif self.ruleType == audioRuleBeep:
-            return PpBeepCommand(self.tone, self.duration)
+            return PpBeepCommand(self.tone, self.duration), None
+        elif self.ruleType == audioRuleProsody:
+            className = self.prosodyName
+            className = className[0].upper() + className[1:] + 'Command'
+            classClass = getattr(speech.commands, className)
+            if self.prosodyOffset is not None:
+                preCommand = classClass(offset=self.prosodyOffset)
+            else:
+                preCommand = classClass(multiplier=self.prosodyMultiplier)
+            postCommand = classClass()
+            return preCommand, postCommand
+            
         else:
             raise ValueError()
 
@@ -567,6 +619,9 @@ class AudioRule:
                 continue
             yield s[index:match.start(0)]
             yield self.speechCommand
+            if self.postSpeechCommand is not None:
+                yield match.group(0)
+                yield self.postSpeechCommand
             index = match.end(0)
         yield s[index:]
 
@@ -603,7 +658,13 @@ class AudioRuleDialog(wx.Dialog):
         audioRuleBuiltInWave: _("&Built in wave"),
         audioRuleWave: _("&Wave file"),
         audioRuleBeep: _("&Beep"),
+        audioRuleProsody: _("&Prosody"),
     }
+    PROSODY_LABELS = [
+        "Pitch",
+        "Volume",
+        "Rate",
+    ]
     TYPE_LABELS_ORDERING = audioRuleTypes
 
     def __init__(self, parent, title=_("Edit audio rule")):
@@ -635,6 +696,7 @@ class AudioRuleDialog(wx.Dialog):
             audioRuleBuiltInWave: [],
             audioRuleWave: [],
             audioRuleBeep: [],
+            audioRuleProsody: [],
         }
 
       # Translators: built in wav category  combo box
@@ -691,6 +753,24 @@ class AudioRuleDialog(wx.Dialog):
         self.durationTextCtrl=sHelper.addLabeledControl(durationLabelText, wx.TextCtrl)
         #self.durationTextCtrl.Disable()
         self.typeControls[audioRuleBeep].append(self.durationTextCtrl)
+      # Translators: prosody name comboBox
+        prosodyNameLabelText=_("&Prosody name:")
+        self.prosodyNameCategory=guiHelper.LabeledControlHelper(
+            self,
+            prosodyNameLabelText,
+            wx.Choice,
+            choices=self.PROSODY_LABELS,
+        )
+        sHelper.sizer.Add(self.prosodyNameCategory.control)
+        self.typeControls[audioRuleProsody].append(self.prosodyNameCategory.control)
+      # Translators: label for prosody offset
+        prosodyOffsetLabelText = _("Prosody offset:")
+        self.prosodyOffsetTextCtrl=sHelper.addLabeledControl(prosodyOffsetLabelText, wx.TextCtrl)
+        self.typeControls[audioRuleProsody].append(self.prosodyOffsetTextCtrl)
+      # Translators: label for prosody multiplier
+        prosodyMultiplierLabelText = _("Prosody multiplier:")
+        self.prosodyMultiplierTextCtrl=sHelper.addLabeledControl(prosodyMultiplierLabelText, wx.TextCtrl)
+        self.typeControls[audioRuleProsody].append(self.prosodyMultiplierTextCtrl)
 
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
@@ -733,7 +813,15 @@ class AudioRuleDialog(wx.Dialog):
         self.toneTextCtrl.SetValue(str(rule.tone or 500))
         self.durationTextCtrl.SetValue(str(rule.duration or 50))
         self.enabledCheckBox.SetValue(rule.enabled)
+        try:
+            prosodyCategoryIndex = self.PROSODY_LABELS.index(rule.prosodyName)
+        except ValueError:
+            prosodyCategoryIndex = 0
+        self.prosodyNameCategory.control.SetSelection(prosodyCategoryIndex)
+        self.prosodyOffsetTextCtrl.SetValue(str(rule.prosodyOffset or ""))
+        self.prosodyMultiplierTextCtrl.SetValue(str(rule.prosodyMultiplier or ""))
         #self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
+        self.onType(None)
 
     def makeRule(self):
         if not self.patternTextCtrl.GetValue():
@@ -800,6 +888,48 @@ class AudioRuleDialog(wx.Dialog):
                 gui.messageBox(_("duration must be an integer between 0 and 60000"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.durationTextCtrl.SetFocus()
                 return
+        if self.getType() == audioRuleProsody:
+            good = False
+            try:
+                if len(self.prosodyOffsetTextCtrl.GetValue()) == 0:
+                    prosodyOffset = None
+                    good = True
+                else:
+                    prosodyOffset = self.getInt(self.prosodyOffsetTextCtrl.GetValue())
+                    if -100 <= prosodyOffset <= 100:
+                        good = True
+            except ValueError:
+                pass
+            if not good:
+                gui.messageBox(_("prosody offset must be an integer between -100 and 100"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.prosodyOffsetTextCtrl.SetFocus()
+                return
+            good = False
+            try:
+                if len(self.prosodyMultiplierTextCtrl.GetValue()) == 0:
+                    prosodyMultiplier = None
+                    good = True
+                else:
+                    prosodyMultiplier = float(self.prosodyOffsetTextCtrl.GetValue())
+                    if .1 <= prosodyMultiplier <= 10:
+                        good = True
+            except ValueError:
+                pass
+            if not good:
+                gui.messageBox(_("prosody multiplier must be a float between 0.1 and 10"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.prosodyMultiplierTextCtrl.SetFocus()
+                return
+            if prosodyOffset is not None and prosodyMultiplier is not None:
+                gui.messageBox(_("You must specify either prosody offset or multiplier but not both"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.prosodyOffsetTextCtrl.SetFocus()
+                return
+            if prosodyOffset is  None and prosodyMultiplier is  None:
+                gui.messageBox(_("You must specify either prosody offset or multiplier."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.prosodyOffsetTextCtrl.SetFocus()
+                return
+            mylog(f"prosodyOffset={prosodyOffset}")
+            mylog(f"prosodyMultiplier={prosodyMultiplier}")
+
         try:
             return AudioRule(
                 comment=self.commentTextCtrl.GetValue(),
@@ -812,10 +942,13 @@ class AudioRuleDialog(wx.Dialog):
                 tone=self.getInt(self.toneTextCtrl.GetValue()),
                 duration=self.getInt(self.durationTextCtrl.GetValue()),
                 enabled=bool(self.enabledCheckBox.GetValue()),
+                prosodyName=self.PROSODY_LABELS[self.prosodyNameCategory.control.GetSelection()],
+                prosodyOffset=prosodyOffset,
+                prosodyMultiplier=prosodyMultiplier,
                 #caseSensitive=bool(self.caseSensitiveCheckBox.GetValue()),
             )
         except Exception as e:
-            log.debugWarning("Could not add Audio Rule", e)
+            log.error("Could not add Audio Rule", e)
             # Translators: This is an error message to let the user know that the Audio rule is not valid.
             gui.messageBox(
                 _(f"Error creating audio rule: {e}"),
@@ -1033,7 +1166,7 @@ class RulesDialog(gui.SettingsDialog):
         if editIndex<0:
             return
         entryDialog=AudioRuleDialog(self)
-        entryDialog.editRule(rules[editIndex])
+        entryDialog.editRule(self.rules[editIndex])
         if entryDialog.ShowModal()==wx.ID_OK:
             self.rules[editIndex] = entryDialog.rule
             self.rulesList.SetFocus()
@@ -1096,6 +1229,8 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
         for rule in rules:
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
+        #mylog("Speaking!")
+        mylog(str(newSequence))
     else:
         newSequence = speechSequence
     return originalSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
