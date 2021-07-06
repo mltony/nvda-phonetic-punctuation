@@ -888,6 +888,8 @@ class AudioRuleDialog(wx.Dialog):
                 gui.messageBox(_("duration must be an integer between 0 and 60000"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.durationTextCtrl.SetFocus()
                 return
+        prosodyOffset = None
+        prosodyMultiplier = None
         if self.getType() == audioRuleProsody:
             good = False
             try:
