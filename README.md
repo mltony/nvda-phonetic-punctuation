@@ -35,3 +35,4 @@ Synthesizers known to have problems with PhoneticPunctuation:
 Built-in audio icons in 3d, chimes, classic and pan-chimes categories were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
 
 Built-in audio icons in punctuation category were designed by Kara Goldfinch.
+
