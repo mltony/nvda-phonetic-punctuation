@@ -708,7 +708,6 @@ class AudioRuleDialog(wx.Dialog):
             choices=self.getBiwCategories(),
         )
         self.biwCategory.control.Bind(wx.EVT_CHOICE,self.onBiwCategory)
-        sHelper.sizer.Add(self.biwCategory.control)
         self.typeControls[audioRuleBuiltInWave].append(self.biwCategory.control)
       # Translators: built in wav file combo box
         biwListLabelText=_("&Wave:")
@@ -721,8 +720,6 @@ class AudioRuleDialog(wx.Dialog):
         )
 
         self.biwList.control.Bind(wx.EVT_CHOICE,self.onBiw)
-        sHelper.sizer.Add(self.biwList.control)
-        #self.biwList.control.Disable()
         self.typeControls[audioRuleBuiltInWave].append(self.biwList.control)
       # Translators: wav file edit box
         self.wavName  = sHelper.addLabeledControl(_("Wav file"), wx.TextCtrl)
@@ -761,7 +758,6 @@ class AudioRuleDialog(wx.Dialog):
             wx.Choice,
             choices=self.PROSODY_LABELS,
         )
-        sHelper.sizer.Add(self.prosodyNameCategory.control)
         self.typeControls[audioRuleProsody].append(self.prosodyNameCategory.control)
       # Translators: label for prosody offset
         prosodyOffsetLabelText = _("Prosody offset:")
