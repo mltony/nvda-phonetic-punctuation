@@ -990,10 +990,13 @@ class AudioRuleDialog(wx.Dialog):
                 return
             preText = _("Hello")
             postText = _("world")
-            if not repeat:
-                utterance = [preText, rule.getSpeechCommand(), postText]
+            preCommand, postCommand = rule.getSpeechCommand()
+            if postCommand is not None:
+                utterance = [preText, preCommand, postText, postCommand]
+            elif not repeat:
+                utterance = [preText, preCommand, postText]
             else:
-                utterance = [preText] + [rule.getSpeechCommand()] * 3 + [postText]
+                utterance = [preText] + [preCommand] * 3 + [postText]
             speech.cancelSpeech()
             speech.speak(utterance)
         finally:
