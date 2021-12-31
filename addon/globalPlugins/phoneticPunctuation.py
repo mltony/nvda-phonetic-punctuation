@@ -17,6 +17,7 @@ import globalPluginHandler
 import globalVars
 import gui
 from gui import guiHelper, nvdaControls
+from gui.settingsDialogs import SettingsPanel
 import itertools
 import json
 from logHandler import log
@@ -1062,12 +1063,9 @@ class AudioRuleDialog(wx.Dialog):
         ct = self.getType()
         [control.Enable() for control in self.typeControls[ct]]
 
-class RulesDialog(gui.SettingsDialog):
+class RulesDialog(SettingsPanel):
     # Translators: Title for the settings dialog
     title = _("Phonetic Punctuation  rules")
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
 
     def makeSettings(self, settingsSizer):
         global rulesDialogOpen
@@ -1201,7 +1199,7 @@ class RulesDialog(gui.SettingsDialog):
             index=self.rulesList.GetNextSelected(index)
         self.rulesList.SetFocus()
 
-    def onOk(self, evt):
+    def onSave(self):
         global rulesDialogOpen
         rulesDialogOpen = False
         rulesDicts = [rule.asDict() for rule in self.rules]
@@ -1212,9 +1210,9 @@ class RulesDialog(gui.SettingsDialog):
         finally:
             rulesFile.close()
         reloadRules()
-        super().onOk(evt)
 
     def onCancel(self,evt):
+        tones.beep(1000, 1000)
         global rulesDialogOpen
         rulesDialogOpen = False
         super().onCancel(evt)
@@ -1303,16 +1301,11 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         self.injectSpeechInterceptor()
 
     def createMenu(self):
-        def _popupMenu(evt):
-            gui.mainFrame._popupSettingsDialog(RulesDialog)
-        self.prefsMenuItem = gui.mainFrame.sysTrayIcon.preferencesMenu.Append(wx.ID_ANY, _("Phonetic Punctuation and Audio Rules..."))
-        gui.mainFrame.sysTrayIcon.Bind(wx.EVT_MENU, _popupMenu, self.prefsMenuItem)
-
+        gui.settingsDialogs.NVDASettingsDialog.categoryClasses.append(RulesDialog)
 
     def terminate(self):
         self.restoreSpeechInterceptor()
-        prefMenu = gui.mainFrame.sysTrayIcon.preferencesMenu
-        prefMenu.Remove(self.prefsMenuItem)
+        gui.settingsDialogs.NVDASettingsDialog.categoryClasses.remove(RulesDialog)
 
     def injectSpeechInterceptor(self):
         global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel
