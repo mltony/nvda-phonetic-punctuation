@@ -1211,11 +1211,9 @@ class RulesDialog(SettingsPanel):
             rulesFile.close()
         reloadRules()
 
-    def onCancel(self,evt):
-        tones.beep(1000, 1000)
+    def onDiscard(self):
         global rulesDialogOpen
         rulesDialogOpen = False
-        super().onCancel(evt)
 
 originalSpeechSpeak = None
 originalSpeechSpeechSpeak = None
