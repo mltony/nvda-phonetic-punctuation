@@ -1218,6 +1218,7 @@ class RulesDialog(SettingsPanel):
 originalSpeechSpeak = None
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
+originalTonesInitialize = None
 
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
     if config.conf[pp]["enabled"] and not rulesDialogOpen:
@@ -1239,6 +1240,13 @@ def preCancelSpeech(*args, **kwargs):
         localCurrentChain.terminate()
     originalSpeechCancel(*args, **kwargs)
 
+def preTonesInitialize(*args, **kwargs):
+    result = originalTonesInitialize(*args, **kwargs)
+    try:
+        reloadRules()
+    except Exception as e:
+        log.error("Error while reloading phonetic punctuation rules", e)
+    return result
 def processRule(speechSequence, rule, symbolLevel):
     language=speech.getCurrentLanguage()
     newSequence = []
@@ -1306,7 +1314,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         gui.settingsDialogs.NVDASettingsDialog.categoryClasses.remove(RulesDialog)
 
     def injectSpeechInterceptor(self):
-        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel
+        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
         originalSpeechSpeak = speech.speak
         speech.speak = preSpeak
         try:
@@ -1317,13 +1325,16 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         
         originalSpeechCancel = speech.cancelSpeech
         speech.cancelSpeech = preCancelSpeech
+        originalTonesInitialize = tones.initialize
+        tones.initialize = preTonesInitialize
 
     def  restoreSpeechInterceptor(self):
-        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel
+        global originalSpeechSpeak, originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
         speech.speak = originalSpeechSpeak
         if originalSpeechSpeechSpeak is not None:
             speech.speech.speak = originalSpeechSpeechSpeak
         speech.cancelSpeech = originalSpeechCancel
+        tones.initialize = originalTonesInitialize
 
     @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
     def script_togglePp(self, gesture):
