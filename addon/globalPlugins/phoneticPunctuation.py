@@ -427,14 +427,32 @@ class PpBeepCommand(PpSynchronousCommand):
         ppSynchronousPlayer.stop()
 
 class PpWaveFileCommand(PpSynchronousCommand):
-    def __init__(self, fileName, startAdjustment=0, endAdjustment=0):
+    def __init__(self, fileName, startAdjustment=0, endAdjustment=0, volume=100):
         self.fileName = fileName
         self.startAdjustment = startAdjustment
         self.endAdjustment = endAdjustment
+        self.volume = volume
         self.f = wave.open(self.fileName,"r")
         f = self.f
         if self.f is None:
             raise RuntimeError("can not open file %s"%self.fileName)
+        if f.getsampwidth() != 2:
+            bits = f.getsampwidth() * 8
+            raise RuntimeError(f"We only support 16-bit encoded wav files. '{fileName}' is encoded with {bits} bits per sample.")
+        buf =  f.readframes(f.getnframes())
+        bufSize = len(buf)
+        n = bufSize//2
+        unpacked = struct.unpack(f"<{n}h", buf)
+        unpacked = list(unpacked)
+        for i in range(n):
+            unpacked[i] = int(unpacked[i] * volume/100)
+        if self.startAdjustment > 0:
+            pos = self.startAdjustment * f.getframerate() // 1000
+            pos *= f.getnchannels()
+            unpacked = unpacked[pos:]
+            n = len(unpacked)
+        packed = struct.pack(f"<{n}h", *unpacked)
+        self.buf = packed
         self.fileWavePlayer = nvwave.WavePlayer(channels=f.getnchannels(), samplesPerSec=f.getframerate(),bitsPerSample=f.getsampwidth()*8, outputDevice=config.conf["speech"]["outputDevice"],wantDucking=False)
 
     def run(self):
@@ -443,14 +461,11 @@ class PpWaveFileCommand(PpSynchronousCommand):
         if self.startAdjustment < 0:
             time.sleep(-self.startAdjustment / 1000.0)
         elif self.startAdjustment > 0:
-            pos = self.startAdjustment * f.getframerate() // 1000
-            try:
-                f.setpos(pos)
-            except wave.Error:
-                f.setpos(f.getnframes() - 1)
+            # this is now handled in __init__
+            pass
         fileWavePlayer = self.fileWavePlayer
         fileWavePlayer.stop()
-        fileWavePlayer.feed(f.readframes(f.getnframes()))
+        fileWavePlayer.feed(self.buf)
         fileWavePlayer.idle()
 
     def getDuration(self):
@@ -521,7 +536,7 @@ audioRuleTypes = [
 ]
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume".split()
     def __init__(
         self,
         comment,
@@ -538,6 +553,7 @@ class AudioRule:
         prosodyName=None,
         prosodyOffset=None,
         prosodyMultiplier=None,
+        volume=100,
     ):
         self.comment = comment
         self.pattern = pattern
@@ -553,6 +569,7 @@ class AudioRule:
         self.prosodyName = prosodyName
         self.prosodyOffset = prosodyOffset
         self.prosodyMultiplier = prosodyMultiplier
+        self.volume = volume
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
@@ -583,10 +600,11 @@ class AudioRule:
             return PpWaveFileCommand(
                 wavFile,
                 startAdjustment=self.startAdjustment,
-                endAdjustment=self.endAdjustment
+                endAdjustment=self.endAdjustment,
+                volume=self.volume,
             ), None
         elif self.ruleType == audioRuleBeep:
-            return PpBeepCommand(self.tone, self.duration), None
+            return PpBeepCommand(self.tone, self.duration, left=self.volume, right=self.volume), None
         elif self.ruleType == audioRuleProsody:
             className = self.prosodyName
             className = className[0].upper() + className[1:] + 'Command'
@@ -731,6 +749,14 @@ class AudioRuleDialog(wx.Dialog):
         self._browseButton = sHelper.addItem (wx.Button (self, label = _("&Browse...")))
         self._browseButton.Bind(wx.EVT_BUTTON, self._onBrowseClick)
         self.typeControls[audioRuleWave].append(self._browseButton)
+      # Volume slider
+        label = _("Volume")
+        self.volumeSlider = sHelper.addLabeledControl(label, wx.Slider, minValue=0,maxValue=100)
+        self.volumeSlider.SetValue(100)
+        self.typeControls[audioRuleWave].append(self.volumeSlider)
+        self.typeControls[audioRuleBuiltInWave].append(self.volumeSlider)
+        self.typeControls[audioRuleBeep].append(self.volumeSlider)
+
       # Translators: label for adjust start
         label = _("Start adjustment in millis - positive to cut off start, negative for extra pause in the beginning.")
         self.startAdjustmentTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
@@ -805,6 +831,7 @@ class AudioRuleDialog(wx.Dialog):
         self.setType(rule.ruleType)
         self.wavName.SetValue(rule.wavFile)
         self.setBiw(rule.builtInWavFile)
+        self.volumeSlider.SetValue(rule.volume or 100)
         self.startAdjustmentTextCtrl.SetValue(str(rule.startAdjustment or 0))
         self.endAdjustmentTextCtrl.SetValue(str(rule.endAdjustment or 0))
         self.toneTextCtrl.SetValue(str(rule.tone or 500))
@@ -944,7 +971,7 @@ class AudioRuleDialog(wx.Dialog):
                 prosodyName=self.PROSODY_LABELS[self.prosodyNameCategory.control.GetSelection()],
                 prosodyOffset=prosodyOffset,
                 prosodyMultiplier=prosodyMultiplier,
-                #caseSensitive=bool(self.caseSensitiveCheckBox.GetValue()),
+                volume=self.volumeSlider.Value or 100,
             )
         except Exception as e:
             log.error("Could not add Audio Rule", e)
