@@ -936,7 +936,7 @@ class AudioRuleDialog(wx.Dialog):
                     prosodyMultiplier = None
                     good = True
                 else:
-                    prosodyMultiplier = float(self.prosodyOffsetTextCtrl.GetValue())
+                    prosodyMultiplier = float(self.prosodyMultiplierTextCtrl.GetValue())
                     if .1 <= prosodyMultiplier <= 10:
                         good = True
             except ValueError:
