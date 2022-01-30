@@ -44,7 +44,7 @@ import wx
 
 debug = False
 if debug:
-    f = open("C:\\Users\\tony\\Dropbox\\1.txt", "w")
+    f = open("C:\\Users\\tony\\Dropbox\\1.txt", "w", encoding="utf-8")
     LOG_MUTEX = threading.Lock()
 def mylog(s):
     if debug:
@@ -633,7 +633,10 @@ class AudioRule:
     def processStringInternal(self, s, symbolLevel, language):
         index = 0
         for match in self.regexp.finditer(s):
-            if speech.isBlank(speech.processText(language,match.group(0), symbolLevel)):
+            if (
+                not speech.isBlank(match.group(0))
+                and speech.isBlank(speech.processText(language,match.group(0), symbolLevel))
+            ):
                 # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.
                 continue
             yield s[index:match.start(0)]
