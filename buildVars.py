@@ -4,35 +4,36 @@
 # Change this file instead of sconstruct or manifest files, whenever possible.
 
 # Full getext (please don't change)
-_ = lambda x : x
+def _(x): return x
+
 
 # Add-on information variables
 addon_info = {
-	# for previously unpublished addons, please follow the community guidelines at:
-	# https://bitbucket.org/nvdaaddonteam/todo/raw/master/guideLines.txt
-	# add-on Name, internal for nvda
-	"addon_name" : "phoneticPunctuation",
-	# Add-on summary, usually the user visible name of the addon.
-	# Translators: Summary for this add-on to be shown on installation and add-on information.
-	"addon_summary" : _("Phonetic Punctuation"),
-	# Add-on description
-	# Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-	"addon_description" : _("""Phonetic punctuation add-on.
+    # for previously unpublished addons, please follow the community guidelines at:
+    # https://bitbucket.org/nvdaaddonteam/todo/raw/master/guideLines.txt
+    # add-on Name, internal for nvda
+    "addon_name": "phoneticPunctuation",
+    # Add-on summary, usually the user visible name of the addon.
+    # Translators: Summary for this add-on to be shown on installation and add-on information.
+    "addon_summary": _("Phonetic Punctuation"),
+    # Add-on description
+    # Translators: Long description to be shown for this add-on on add-on information from add-ons manager
+    "addon_description": _("""Phonetic punctuation add-on.
 Allows to replace punctuation marks in speech, along with any regular expression patterns with customizable auditory icons. """),
-	# version
-	"addon_version" : "1.6", 
-	# Author(s)
-	"addon_author" : u"Tony Malykh <anton.malykh@gmail.com>",
-	# URL for the add-on documentation support
-	"addon_url" : "https://github.com/mltony/nvda-phonetic-punctuation/",
-	# Documentation file name
-	"addon_docFileName" : "readme.html",
-	# Minimum NVDA version supported (e.g. "2018.3")
-	"addon_minimumNVDAVersion" : "2019.3.0",
-	# Last NVDA version supported/tested (e.g. "2018.4", ideally more recent than minimum version)
-	"addon_lastTestedNVDAVersion" : "2022.1.0",
-	# Add-on update channel (default is stable or None)
-	"addon_updateChannel" : None,
+    # version
+    "addon_version": "1.6",
+    # Author(s)
+    "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
+    # URL for the add-on documentation support
+    "addon_url": "https://github.com/mltony/nvda-phonetic-punctuation/",
+    # Documentation file name
+    "addon_docFileName": "readme.html",
+    # Minimum NVDA version supported (e.g. "2018.3")
+    "addon_minimumNVDAVersion": "2019.3.0",
+    # Last NVDA version supported/tested (e.g. "2018.4", ideally more recent than minimum version)
+    "addon_lastTestedNVDAVersion": "2023.1.0",
+    # Add-on update channel (default is stable or None)
+    "addon_updateChannel": None,
 }
 
 
