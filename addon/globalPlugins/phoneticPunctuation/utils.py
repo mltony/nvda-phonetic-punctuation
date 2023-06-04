@@ -43,7 +43,7 @@ import wave
 import wx
 
 
-debug = True
+debug = False
 if debug:
     f = open("C:\\Users\\tony\\od\\1.txt", "w", encoding="utf-8")
     LOG_MUTEX = threading.Lock()
@@ -112,6 +112,7 @@ def initConfiguration():
     confspec = {
         "enabled" : "boolean( default=True)",
         "rules" : "string( default='')",
+        "applicationsBlacklist" : "string( default='')",
     }
     config.conf.spec[phoneticPunctuationConfigKey] = confspec
 
@@ -121,4 +122,3 @@ def getSoundsPath():
     addonPath = os.path.split(addonPath)[0]
     soundsPath = os.path.join(addonPath, "sounds")
     return soundsPath
-

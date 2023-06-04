@@ -480,8 +480,15 @@ originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
 originalTonesInitialize = None
 
+def isAppBlacklisted():
+    focus = api.getFocusObject()
+    appName = focus.appModule.appName
+    if appName.lower() in getConfig("applicationsBlacklist").lower().strip().split(","):
+        return True
+    return False
+
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
-    if getConfig("enabled") and not rulesDialogOpen:
+    if isAppBlacklisted() != True and getConfig("enabled") and not rulesDialogOpen:
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
