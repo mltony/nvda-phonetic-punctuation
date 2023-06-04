@@ -507,6 +507,8 @@ class RulesDialog(SettingsPanel):
         self.removeButton = bHelper.addButton(self, label=_("Re&move rule"))
         self.removeButton.Bind(wx.EVT_BUTTON, self.OnRemoveClick)
 
+        self.applicationsBlacklistEdit = sHelper.addLabeledControl(_("Disable PhoneticPuntuation in applications (comma-separated list)"), wx.TextCtrl)
+        self.applicationsBlacklistEdit.Value = getConfig("applicationsBlacklist")
 
     def postInit(self):
         self.rulesList.SetFocus()
@@ -611,6 +613,8 @@ class RulesDialog(SettingsPanel):
         finally:
             rulesFile.close()
         reloadRules()
+
+        setConfig("applicationsBlacklist",self.applicationsBlacklistEdit.Value)
 
     def onDiscard(self):
         global rulesDialogOpen
