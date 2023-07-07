@@ -44,6 +44,7 @@ import ui
 import wave
 import wx
 
+from .common import *
 from .utils import *
 from .commands import *
 
@@ -348,7 +349,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyName".split()
     def __init__(
         self,
         comment,
@@ -367,6 +368,7 @@ class AudioRule:
         prosodyMultiplier=None,
         volume=100,
         passThrough=False,
+        property_name="",
     ):
         self.comment = comment
         self.pattern = pattern
@@ -384,6 +386,7 @@ class AudioRule:
         self.prosodyMultiplier = prosodyMultiplier
         self.volume = volume
         self.passThrough = passThrough
+        self.property_name = property_name
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
@@ -404,6 +407,23 @@ class AudioRule:
 
     def asDict(self):
         return {k:v for k,v in self.__dict__.items() if k in self.jsonFields}
+        
+    def getFrenzyType(self):
+        if len(self.frenzyName) == 0:
+            return None
+        return FrenzyType(self.frenzyName.split(":")[0])
+    
+    def getFrenzyValue(self):
+        if len(self.frenzyName) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyName.split(":")
+        if type == FrenzyType.FRENZY_ROLE:
+            return getattr(controlTypes.Role, s)
+        elif type == FrenzyType.FRENZY_STATE:
+            return getattr(controlTypes.State, s)
+        elif type == FrenzyType.FRENZY_FORMAT:
+            return None #TBD
 
     def getSpeechCommand(self):
         if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
@@ -483,9 +503,15 @@ def reloadRules():
     rules = []
     for ruleDict in json.loads(rulesConfig):
         try:
-            rules.append(AudioRule(**ruleDict))
+            rule = AudioRule(**ruleDict)
         except Exception as e:
             log.error("Failed to load audio rule", e)
+        if len(rule.property_name) == 0:
+            # Phonetic punctuation rule
+            rules.append(rule)
+        else:
+            # earcon frenzy rule
+            tokens = rule.property_name.split(":")
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
