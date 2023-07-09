@@ -78,6 +78,11 @@ class AudioRuleDialog(wx.Dialog):
         enabledText = _("Rule enabled")
         self.enabledCheckBox=sHelper.addItem(wx.CheckBox(self,label=enabledText))
         self.enabledCheckBox.SetValue(True)
+      # Translators: label for enable passthrough checkbox
+        labelText = _("Pass raw text through to synth. Typically you want to enable this only for punctuation marks and disable for all other rules.")
+        self.passThroughCheckBox=sHelper.addItem(wx.CheckBox(self,label=labelText))
+        self.passThroughCheckBox.SetValue(False)
+
       # Translators:  label for type selector radio buttons in add audio rule dialog
         typeText = _("&Type")
         typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]
@@ -219,6 +224,7 @@ class AudioRuleDialog(wx.Dialog):
         self.prosodyOffsetTextCtrl.SetValue(str(rule.prosodyOffset or ""))
         self.prosodyMultiplierTextCtrl.SetValue(str(rule.prosodyMultiplier or ""))
         #self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
+        self.passThroughCheckBox.SetValue(rule.passThrough)
         self.onType(None)
 
     def makeRule(self):
@@ -228,10 +234,14 @@ class AudioRuleDialog(wx.Dialog):
             self.patternTextCtrl.SetFocus()
             return
         try:
-            re.compile(self.patternTextCtrl.GetValue())
+            r = re.compile(self.patternTextCtrl.GetValue())
         except sre_constants.error:
             # Translators: Invalid regular expression
             gui.messageBox(_("Invalid regular expression."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+            self.patternTextCtrl.SetFocus()
+            return
+        if r.search(''):
+            gui.messageBox(_("Regular expression pattern matches empty string. This is not allowed. Please change the pattern."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
             self.patternTextCtrl.SetFocus()
             return
 
@@ -346,6 +356,7 @@ class AudioRuleDialog(wx.Dialog):
                 prosodyOffset=prosodyOffset,
                 prosodyMultiplier=prosodyMultiplier,
                 volume=self.volumeSlider.Value or 100,
+                passThrough=bool(self.passThroughCheckBox.GetValue()),
             )
         except Exception as e:
             log.error("Could not add Audio Rule", e)

@@ -7,6 +7,7 @@
 import addonHandler
 import api
 import bisect
+import characterProcessing
 import config
 import controlTypes
 import copy
@@ -343,7 +344,7 @@ audioRuleTypes = [
 ]
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough".split()
     def __init__(
         self,
         comment,
@@ -361,6 +362,7 @@ class AudioRule:
         prosodyOffset=None,
         prosodyMultiplier=None,
         volume=100,
+        passThrough=False,
     ):
         self.comment = comment
         self.pattern = pattern
@@ -377,6 +379,7 @@ class AudioRule:
         self.prosodyOffset = prosodyOffset
         self.prosodyMultiplier = prosodyMultiplier
         self.volume = volume
+        self.passThrough = passThrough
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
@@ -446,7 +449,11 @@ class AudioRule:
             ):
                 # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.
                 continue
-            yield s[index:match.start(0)]
+            if not self.passThrough:
+                index2 = match.start(0)
+            else:
+                index2 = match.end(0)
+            yield s[index:index2]
             yield self.speechCommand
             if self.postSpeechCommand is not None:
                 yield match.group(0)
@@ -478,6 +485,7 @@ def reloadRules():
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
+originalProcessSpeechSymbols = None
 originalTonesInitialize = None
 
 def isAppBlacklisted():
@@ -507,6 +515,48 @@ def preCancelSpeech(*args, **kwargs):
         localCurrentChain.terminate()
     originalSpeechCancel(*args, **kwargs)
 
+def preProcessSpeechSymbols(locale, text, level):
+    global rules
+    #mylog(f"preprocess '{text}'")
+    n = len(text)
+    pattern = "|".join([
+        rule.pattern
+        for rule in rules
+        if rule.enabled and rule.passThrough
+    ])
+    pattern = f"({pattern})+"
+    #mylog(f"pattern={pattern}")
+    r = re.compile(pattern, re.UNICODE)
+    if r.search(""):
+        # This is very wrong, just return patched function instead
+        return originalProcessSpeechSymbols(locale, text, level)
+    prevIndex = 0
+    result = []
+    for m in r.finditer(text):
+        start = m.start(0)
+        end = m.end(0)
+        prefix = text[prevIndex:start]
+        if len(prefix) > 0 and not speech.isBlank(prefix):
+            chunk = originalProcessSpeechSymbols(locale, prefix, level)
+            #mylog(f"{prefix} >> {chunk}")
+            result.append(chunk)
+        result.append(m.group(0))
+        #mylog(f"=={m.group(0)}")
+        prevIndex = end
+    suffix = text[prevIndex:]
+    if (
+        prevIndex == 0
+        or (
+            len(suffix) > 0 and
+            not speech.isBlank(suffix)
+        )
+    ):
+        chunk = originalProcessSpeechSymbols(locale, suffix, level)
+        result.append(chunk)
+    finalResult = "".join(result)
+    #mylog(f"finalResult={finalResult}")
+    return finalResult
+
 def preTonesInitialize(*args, **kwargs):
     result = originalTonesInitialize(*args, **kwargs)
     try:
@@ -516,11 +566,13 @@ def preTonesInitialize(*args, **kwargs):
     return result
 
 def injectMonkeyPatches():
-    global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
+    global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize, originalProcessSpeechSymbols
     originalSpeechSpeechSpeak = speech.speech.speak
     speech.speech.speak = preSpeak
     originalSpeechCancel = speech.speech.cancelSpeech
     speech.speech.cancelSpeech = preCancelSpeech
+    originalProcessSpeechSymbols = characterProcessing.processSpeechSymbols
+    characterProcessing.processSpeechSymbols = preProcessSpeechSymbols
     originalTonesInitialize = tones.initialize
     tones.initialize = preTonesInitialize
 
@@ -528,6 +580,7 @@ def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
     speech.speech.speak = originalSpeechSpeechSpeak
     speech.speech.cancelSpeech = originalSpeechCancel
+    characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
 
 
