@@ -343,6 +343,10 @@ audioRuleTypes = [
     audioRuleProsody,
 ]
 
+class MaskedString:
+    def __init__(self, s):
+        self.s = s
+
 class AudioRule:
     jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough".split()
     def __init__(
@@ -449,12 +453,12 @@ class AudioRule:
             ):
                 # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.
                 continue
-            if not self.passThrough:
-                index2 = match.start(0)
-            else:
-                index2 = match.end(0)
+            index2 = match.start(0)
             yield s[index:index2]
             yield self.speechCommand
+            if self.passThrough:
+                # returning masked string to avoid other rules processing this punctuation mark again
+                yield MaskedString(match.group(0))
             if self.postSpeechCommand is not None:
                 yield match.group(0)
                 yield self.postSpeechCommand
@@ -611,6 +615,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
         else:
             newSequence.extend(values)
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
+    newSequence = unmaskMaskedStrings(newSequence)
     return newSequence
 
 def eloquenceFix(speechSequence, language, symbolLevel):
@@ -633,3 +638,12 @@ def eloquenceFix(speechSequence, language, symbolLevel):
         ):
             indicesToRemove.append(i)
     return [speechSequence[i] for i in range(len(speechSequence)) if i not in indicesToRemove]
+
+def unmaskMaskedStrings(sequence):
+    result = []
+    for item in sequence:
+        if isinstance(item, MaskedString):
+            result.append(item.s)
+        else:
+            result.append(item)
+    return result
