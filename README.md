@@ -30,6 +30,11 @@ Synthesizers known to have problems with PhoneticPunctuation:
 * IBMTTS (as of January 2020): see [this issue](https://github.com/davidacm/NVDA-IBMTTS-Driver/issues/22). Use eloquence_threshold synthesizer instead.
 * RHVoice: Break command is not supported as of January 2020.
 
+## Blacklist Setting
+You can disable phonetic-punctuation in certain applications.  This is a comma-separated blacklist of applications where phonetic-punctuation will be disabled. 
+If you are not sure what should be the name of your application, switch to that application, Press NVDA+Control+Z to open up NVDA console and type: "focus.appModule.appName" without quotes to obtain the name of current application.
+Example list: slack,discord
+
 ## Copyright notice
 
 Built-in audio icons in 3d, chimes, classic and pan-chimes categories were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
