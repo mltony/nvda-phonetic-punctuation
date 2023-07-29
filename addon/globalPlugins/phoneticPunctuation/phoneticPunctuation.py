@@ -9,6 +9,7 @@ import api
 import bisect
 import characterProcessing
 import config
+import collections
 import controlTypes
 import copy
 import core
@@ -511,10 +512,10 @@ class AudioRule:
 
 
 rulesDialogOpen = False
-rules = []
+rulesByFrenzy = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 def reloadRules():
-    global rules
+    global rulesByFrenzy
     try:
         rulesConfig = open(rulesFileName, "r").read()
     except FileNotFoundError:
@@ -524,13 +525,16 @@ def reloadRules():
         mylog("No rules config found, using default one.")
         rulesConfig = defaultRules
     mylog(rulesConfig)
-    rules = []
+    rulesByFrenzy = {
+        frenzy: []
+        for frenzy in FrenzyType
+    }
     for ruleDict in json.loads(rulesConfig):
         try:
             rule = AudioRule(**ruleDict)
         except Exception as e:
             log.error("Failed to load audio rule", e)
-        rules.append(rule)
+        rulesByFrenzy[rule.getFrenzyType()].append(rule)
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
@@ -549,9 +553,7 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
-        for rule in rules:
-            if rule.getFrenzyType() != FrenzyType.TEXT:
-                continue
+        for rule in rulesByFrenzy[FrenzyType.TEXT]:
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
         #mylog("Speaking!")
@@ -567,12 +569,12 @@ def preCancelSpeech(*args, **kwargs):
     originalSpeechCancel(*args, **kwargs)
 
 def preProcessSpeechSymbols(locale, text, level):
-    global rules
+    global rulesByFrenzy
     #mylog(f"preprocess '{text}'")
     n = len(text)
     pattern = "|".join([
         rule.pattern
-        for rule in rules
+        for rule in rulesByFrenzy[FrenzyType.TEXT]
         if rule.enabled and rule.passThrough
     ])
     pattern = f"({pattern})+"

@@ -541,7 +541,7 @@ class RulesDialog(SettingsPanel):
         global rulesDialogOpen
         rulesDialogOpen = True
         pp.reloadRules()
-        self.allRules = pp.rules[:]
+        self.allRules = [rule for frenzyType, rules in pp.rulesByFrenzy.items() for rule in rules]
         self.frenzyRules = []
 
         sHelper = gui.guiHelper.BoxSizerHelper(self, sizer=settingsSizer)
