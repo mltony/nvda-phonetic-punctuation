@@ -349,7 +349,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyName".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue".split()
     def __init__(
         self,
         comment,
@@ -368,7 +368,8 @@ class AudioRule:
         prosodyMultiplier=None,
         volume=100,
         passThrough=False,
-        property_name="",
+        frenzyType=FrenzyType.TEXT.name,
+        frenzyValue="",
     ):
         self.comment = comment
         self.pattern = pattern
@@ -386,12 +387,22 @@ class AudioRule:
         self.prosodyMultiplier = prosodyMultiplier
         self.volume = volume
         self.passThrough = passThrough
-        self.property_name = property_name
+        if isinstance(frenzyType, FrenzyType):
+            self.frenzyType = frenzyType.name
+        else:
+            self.frenzyType = frenzyType
+        if isinstance(frenzyValue, Enum):
+            self.frenzyValue = frenzyValue.name
+        else:
+            self.frenzyValue = frenzyValue
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
-        return self.comment or self.pattern
+        if self.getFrenzyType() == FrenzyType.TEXT:
+            return self.comment or self.pattern
+        else:
+            return f"{FRENZY_NAMES_SINGULAR[self.getFrenzyType()]}:{self.getFrenzyValueStr()}"
 
     def getReplacementDescription(self):
         if self.ruleType == audioRuleWave:
@@ -409,21 +420,34 @@ class AudioRule:
         return {k:v for k,v in self.__dict__.items() if k in self.jsonFields}
         
     def getFrenzyType(self):
-        if len(self.frenzyName) == 0:
+        if len(self.frenzyType) == 0:
             return None
-        return FrenzyType(self.frenzyName.split(":")[0])
+        return getattr(FrenzyType, self.frenzyType)
     
     def getFrenzyValue(self):
-        if len(self.frenzyName) == 0:
+        if len(self.frenzyValue) == 0:
             return None
         type = self.getFrenzyType()
-        s = self.frenzyName.split(":")
-        if type == FrenzyType.FRENZY_ROLE:
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
             return getattr(controlTypes.Role, s)
-        elif type == FrenzyType.FRENZY_STATE:
+        elif type == FrenzyType.STATE:
             return getattr(controlTypes.State, s)
-        elif type == FrenzyType.FRENZY_FORMAT:
+        elif type == FrenzyType.FORMAT:
             return None #TBD
+
+    def getFrenzyValueStr(self):
+        if len(self.frenzyValue) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
+            return controlTypes.role._roleLabels[getattr(controlTypes.Role, s)]
+        elif type == FrenzyType.STATE:
+            return controlTypes.state._stateLabels[getattr(controlTypes.State, s)]
+        elif type == FrenzyType.FORMAT:
+            return None #TBD
+
 
     def getSpeechCommand(self):
         if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
@@ -506,12 +530,7 @@ def reloadRules():
             rule = AudioRule(**ruleDict)
         except Exception as e:
             log.error("Failed to load audio rule", e)
-        if len(rule.property_name) == 0:
-            # Phonetic punctuation rule
-            rules.append(rule)
-        else:
-            # earcon frenzy rule
-            tokens = rule.property_name.split(":")
+        rules.append(rule)
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
@@ -531,6 +550,8 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
         for rule in rules:
+            if rule.getFrenzyType() != FrenzyType.TEXT:
+                continue
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
         #mylog("Speaking!")
