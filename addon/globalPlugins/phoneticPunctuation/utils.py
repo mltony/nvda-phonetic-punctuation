@@ -43,7 +43,7 @@ import wave
 import wx
 
 
-debug = False
+debug = True
 if debug:
     f = open("C:\\Users\\tony\\od\\1.txt", "w", encoding="utf-8")
     LOG_MUTEX = threading.Lock()

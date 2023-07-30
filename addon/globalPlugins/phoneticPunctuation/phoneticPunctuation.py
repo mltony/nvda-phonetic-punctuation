@@ -48,6 +48,7 @@ import wx
 from .common import *
 from .utils import *
 from .commands import *
+from . import frenzy
 
 defaultRules = """
 [
@@ -535,6 +536,7 @@ def reloadRules():
         except Exception as e:
             log.error("Failed to load audio rule", e)
         rulesByFrenzy[rule.getFrenzyType()].append(rule)
+    frenzy.updateRules()
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
@@ -628,6 +630,7 @@ def injectMonkeyPatches():
     characterProcessing.processSpeechSymbols = preProcessSpeechSymbols
     originalTonesInitialize = tones.initialize
     tones.initialize = preTonesInitialize
+    frenzy.monkeyPatch()
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -635,6 +638,7 @@ def  restoreMonkeyPatches():
     speech.speech.cancelSpeech = originalSpeechCancel
     characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
+    frenzy.monkeyUnpatch()
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -649,11 +653,12 @@ def processRule(speechSequence, rule, symbolLevel):
 
 def postProcessSynchronousCommands(speechSequence, symbolLevel):
     language=speech.getCurrentLanguage()
-    speechSequence = [element for element in speechSequence
+    speechSequence = [
+        element 
+        for element in speechSequence
         if not isinstance(element, str)
         or not speech.isBlank(speech.processText(language,element,symbolLevel))
     ]
-
     newSequence = []
     for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
         if isSynchronous:

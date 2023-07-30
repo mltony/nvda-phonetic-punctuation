@@ -240,6 +240,16 @@ class AudioRuleDialog(wx.Dialog):
     def editRule(self, rule):
         self.commentTextCtrl.SetValue(rule.comment)
         self.patternTextCtrl.SetValue(rule.pattern)
+        if self.frenzyType != rule.getFrenzyType():
+            raise RuntimeError
+        idx = None
+        if self.frenzyType        == FrenzyType.ROLE:
+            idx = list(controlTypes.Role).index(rule.getFrenzyValue())
+        elif self.frenzyType        == FrenzyType.STATE:
+            idx = list(controlTypes.State).index(rule.getFrenzyValue())
+        if idx is not None:
+            self.frenzyValueCategory.control.SetSelection(idx)
+
         self.setType(rule.ruleType)
         self.wavName.SetValue(rule.wavFile)
         self.setBiw(rule.builtInWavFile)
@@ -410,7 +420,6 @@ class AudioRuleDialog(wx.Dialog):
                 frenzyType=self.frenzyType,
                 frenzyValue=frenzyValue,
             )
-            api.z=result
             return result
         except Exception as e:
             log.error("Could not add Audio Rule", e)
@@ -664,7 +673,6 @@ class RulesDialog(SettingsPanel):
         entryDialog=AudioRuleDialog(self,title=_("Add audio rule"), frenzyType=self.frenzyType, disallowedFrenzyValues=disallowedFrenzyValues)
         if entryDialog.ShowModal()==wx.ID_OK:
             self.frenzyRules.append(entryDialog.rule)
-            api.x = entryDialog.rule
             self.rulesList.ItemCount = len(self.frenzyRules)
             index = self.rulesList.ItemCount - 1
             self.rulesList.Select(index)
@@ -683,7 +691,7 @@ class RulesDialog(SettingsPanel):
         disallowedFrenzyValues = [rule.getFrenzyValue() for rule in self.frenzyRules]
         allowedFrenzyValue = self.frenzyRules[editIndex].getFrenzyValue()
         del disallowedFrenzyValues[disallowedFrenzyValues.index(allowedFrenzyValue)]
-        entryDialog=AudioRuleDialog(self, frenzyType=self.frenzyType)
+        entryDialog=AudioRuleDialog(self, frenzyType=self.frenzyType, disallowedFrenzyValues=disallowedFrenzyValues)
         entryDialog.editRule(self.frenzyRules[editIndex])
         if entryDialog.ShowModal()==wx.ID_OK:
             self.frenzyRules[editIndex] = entryDialog.rule
