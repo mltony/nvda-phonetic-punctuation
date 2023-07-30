@@ -66,15 +66,16 @@ def new_getObjectPropertiesSpeech(
     symbolLevel=config.conf["speech"]["symbolLevel"]
     newCommands = []
     patchedAllowedProperties = {}
-    role = obj.role
-    if role in roleRules and roleRules[role].enabled:
-        patchedAllowedProperties['role']=False
-        #allowedProperties['states']=False
-        rule = roleRules[role]
-        command = rule.getSpeechCommand()[0]
-        #api.z=command
-        #newCommands.append("hahaha")
-        newCommands.append(command)
+    if allowedProperties.get('role', False):
+        role = obj.role
+        if role in roleRules and roleRules[role].enabled:
+            patchedAllowedProperties['role']=False
+            #allowedProperties['states']=False
+            rule = roleRules[role]
+            command = rule.getSpeechCommand()[0]
+            #api.z=command
+            #newCommands.append("hahaha")
+            newCommands.append(command)
     newCommands.extend(
         original_getObjectPropertiesSpeech(
             obj,
