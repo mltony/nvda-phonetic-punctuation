@@ -143,7 +143,7 @@ defaultRules = """
     {
         "builtInWavFile": "punctuation\\Backslash.wav",
         "caseSensitive": true,
-        "comment": "]",
+        "comment": "\",
         "duration": 361,
         "enabled": true,
         "endAdjustment": 0,
