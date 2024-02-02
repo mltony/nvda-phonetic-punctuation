@@ -9,6 +9,7 @@ import api
 import bisect
 import characterProcessing
 import config
+import collections
 import controlTypes
 import copy
 import core
@@ -43,8 +44,10 @@ import ui
 import wave
 import wx
 
+from .common import *
 from .utils import *
 from .commands import *
+from . import frenzy
 
 defaultRules = """
 [
@@ -347,7 +350,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue".split()
     def __init__(
         self,
         comment,
@@ -366,6 +369,8 @@ class AudioRule:
         prosodyMultiplier=None,
         volume=100,
         passThrough=False,
+        frenzyType=FrenzyType.TEXT.name,
+        frenzyValue="",
     ):
         self.comment = comment
         self.pattern = pattern
@@ -383,11 +388,22 @@ class AudioRule:
         self.prosodyMultiplier = prosodyMultiplier
         self.volume = volume
         self.passThrough = passThrough
+        if isinstance(frenzyType, FrenzyType):
+            self.frenzyType = frenzyType.name
+        else:
+            self.frenzyType = frenzyType
+        if isinstance(frenzyValue, Enum):
+            self.frenzyValue = frenzyValue.name
+        else:
+            self.frenzyValue = frenzyValue
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
-        return self.comment or self.pattern
+        if self.getFrenzyType() == FrenzyType.TEXT:
+            return self.comment or self.pattern
+        else:
+            return f"{FRENZY_NAMES_SINGULAR[self.getFrenzyType()]}:{self.getFrenzyValueStr()}"
 
     def getReplacementDescription(self):
         if self.ruleType == audioRuleWave:
@@ -403,6 +419,38 @@ class AudioRule:
 
     def asDict(self):
         return {k:v for k,v in self.__dict__.items() if k in self.jsonFields}
+        
+    def getFrenzyType(self):
+        if len(self.frenzyType) == 0:
+            return None
+        return getattr(FrenzyType, self.frenzyType)
+    
+    def getFrenzyValue(self):
+        if self.frenzyValue is None:
+            return None
+        if len(self.frenzyValue) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
+            return getattr(controlTypes.Role, s)
+        elif type == FrenzyType.STATE:
+            return getattr(controlTypes.State, s)
+        elif type == FrenzyType.FORMAT:
+            return None #TBD
+
+    def getFrenzyValueStr(self):
+        if len(self.frenzyValue) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
+            return controlTypes.role._roleLabels[getattr(controlTypes.Role, s)]
+        elif type == FrenzyType.STATE:
+            return controlTypes.state._stateLabels[getattr(controlTypes.State, s)]
+        elif type == FrenzyType.FORMAT:
+            return None #TBD
+
 
     def getSpeechCommand(self):
         if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
@@ -466,10 +514,10 @@ class AudioRule:
 
 
 rulesDialogOpen = False
-rules = []
+rulesByFrenzy = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 def reloadRules():
-    global rules
+    global rulesByFrenzy
     try:
         rulesConfig = open(rulesFileName, "r").read()
     except FileNotFoundError:
@@ -479,15 +527,22 @@ def reloadRules():
         mylog("No rules config found, using default one.")
         rulesConfig = defaultRules
     mylog(rulesConfig)
-    rules = []
+    
+    rulesByFrenzy = {
+        frenzy: []
+        for frenzy in FrenzyType
+    }
     errors = []
     for ruleDict in json.loads(rulesConfig):
         try:
-            rules.append(AudioRule(**ruleDict))
+            rule = AudioRule(**ruleDict)
         except Exception as e:
             errors.append(e)
+        else:
+            rulesByFrenzy[rule.getFrenzyType()].append(rule)
     if len(errors) > 0:
         log.error(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
+    frenzy.updateRules()
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
@@ -506,7 +561,7 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
-        for rule in rules:
+        for rule in rulesByFrenzy[FrenzyType.TEXT]:
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
         #mylog("Speaking!")
@@ -523,12 +578,12 @@ def preCancelSpeech(*args, **kwargs):
     originalSpeechCancel(*args, **kwargs)
 
 def preProcessSpeechSymbols(locale, text, level):
-    global rules
+    global rulesByFrenzy
     #mylog(f"preprocess '{text}'")
     n = len(text)
     pattern = "|".join([
         rule.pattern
-        for rule in rules
+        for rule in rulesByFrenzy[FrenzyType.TEXT]
         if rule.enabled and rule.passThrough
     ])
     pattern = f"({pattern})+"
@@ -582,6 +637,7 @@ def injectMonkeyPatches():
     characterProcessing.processSpeechSymbols = preProcessSpeechSymbols
     originalTonesInitialize = tones.initialize
     tones.initialize = preTonesInitialize
+    frenzy.monkeyPatch()
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -589,6 +645,7 @@ def  restoreMonkeyPatches():
     speech.speech.cancelSpeech = originalSpeechCancel
     characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
+    frenzy.monkeyUnpatch()
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -603,11 +660,12 @@ def processRule(speechSequence, rule, symbolLevel):
 
 def postProcessSynchronousCommands(speechSequence, symbolLevel):
     language=speech.getCurrentLanguage()
-    speechSequence = [element for element in speechSequence
+    speechSequence = [
+        element 
+        for element in speechSequence
         if not isinstance(element, str)
         or not speech.isBlank(speech.processText(language,element,symbolLevel))
     ]
-
     newSequence = []
     for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
         if isSynchronous:
