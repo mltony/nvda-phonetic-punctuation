@@ -112,6 +112,7 @@ def initConfiguration():
     confspec = {
         "enabled" : "boolean( default=True)",
         "rules" : "string( default='')",
+        "applicationsBlacklist" : "string( default='')",
     }
     config.conf.spec[phoneticPunctuationConfigKey] = confspec
 
@@ -121,4 +122,3 @@ def getSoundsPath():
     addonPath = os.path.split(addonPath)[0]
     soundsPath = os.path.join(addonPath, "sounds")
     return soundsPath
-

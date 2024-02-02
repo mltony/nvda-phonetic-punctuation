@@ -7,7 +7,9 @@
 import addonHandler
 import api
 import bisect
+import characterProcessing
 import config
+import collections
 import controlTypes
 import copy
 import core
@@ -43,8 +45,10 @@ import ui
 import wave
 import wx
 
+from .common import *
 from .utils import *
 from .commands import *
+from . import frenzy
 
 defaultRules = """
 [
@@ -342,8 +346,12 @@ audioRuleTypes = [
     audioRuleProsody,
 ]
 
+class MaskedString:
+    def __init__(self, s):
+        self.s = s
+
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue".split()
     def __init__(
         self,
         comment,
@@ -361,6 +369,9 @@ class AudioRule:
         prosodyOffset=None,
         prosodyMultiplier=None,
         volume=100,
+        passThrough=False,
+        frenzyType=FrenzyType.TEXT.name,
+        frenzyValue="",
     ):
         self.comment = comment
         self.pattern = pattern
@@ -377,11 +388,23 @@ class AudioRule:
         self.prosodyOffset = prosodyOffset
         self.prosodyMultiplier = prosodyMultiplier
         self.volume = volume
+        self.passThrough = passThrough
+        if isinstance(frenzyType, FrenzyType):
+            self.frenzyType = frenzyType.name
+        else:
+            self.frenzyType = frenzyType
+        if isinstance(frenzyValue, Enum):
+            self.frenzyValue = frenzyValue.name
+        else:
+            self.frenzyValue = frenzyValue
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
-        return self.comment or self.pattern
+        if self.getFrenzyType() == FrenzyType.TEXT:
+            return self.comment or self.pattern
+        else:
+            return f"{FRENZY_NAMES_SINGULAR[self.getFrenzyType()]}:{self.getFrenzyValueStr()}"
 
     def getReplacementDescription(self):
         if self.ruleType == audioRuleWave:
@@ -397,6 +420,38 @@ class AudioRule:
 
     def asDict(self):
         return {k:v for k,v in self.__dict__.items() if k in self.jsonFields}
+        
+    def getFrenzyType(self):
+        if len(self.frenzyType) == 0:
+            return None
+        return getattr(FrenzyType, self.frenzyType)
+    
+    def getFrenzyValue(self):
+        if self.frenzyValue is None:
+            return None
+        if len(self.frenzyValue) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
+            return getattr(controlTypes.Role, s)
+        elif type == FrenzyType.STATE:
+            return getattr(controlTypes.State, s)
+        elif type == FrenzyType.FORMAT:
+            return None #TBD
+
+    def getFrenzyValueStr(self):
+        if len(self.frenzyValue) == 0:
+            return None
+        type = self.getFrenzyType()
+        s = self.frenzyValue
+        if type == FrenzyType.ROLE:
+            return controlTypes.role._roleLabels[getattr(controlTypes.Role, s)]
+        elif type == FrenzyType.STATE:
+            return controlTypes.state._stateLabels[getattr(controlTypes.State, s)]
+        elif type == FrenzyType.FORMAT:
+            return None #TBD
+
 
     def getSpeechCommand(self):
         if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
@@ -446,8 +501,12 @@ class AudioRule:
             ):
                 # Current punctuation level indicates that punctuation mark matched will not be pronounced, therefore skipping it.
                 continue
-            yield s[index:match.start(0)]
+            index2 = match.start(0)
+            yield s[index:index2]
             yield self.speechCommand
+            if self.passThrough:
+                # returning masked string to avoid other rules processing this punctuation mark again
+                yield MaskedString(match.group(0))
             if self.postSpeechCommand is not None:
                 yield match.group(0)
                 yield self.postSpeechCommand
@@ -456,10 +515,10 @@ class AudioRule:
 
 
 rulesDialogOpen = False
-rules = []
+rulesByFrenzy = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 def reloadRules():
-    global rules
+    global rulesByFrenzy
     try:
         rulesConfig = open(rulesFileName, "r").read()
     except FileNotFoundError:
@@ -469,23 +528,36 @@ def reloadRules():
         mylog("No rules config found, using default one.")
         rulesConfig = defaultRules
     mylog(rulesConfig)
-    rules = []
+    rulesByFrenzy = {
+        frenzy: []
+        for frenzy in FrenzyType
+    }
     for ruleDict in json.loads(rulesConfig):
         try:
-            rules.append(AudioRule(**ruleDict))
+            rule = AudioRule(**ruleDict)
         except Exception as e:
             log.error("Failed to load audio rule", e)
+        rulesByFrenzy[rule.getFrenzyType()].append(rule)
+    frenzy.updateRules()
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
+originalProcessSpeechSymbols = None
 originalTonesInitialize = None
 
+def isAppBlacklisted():
+    focus = api.getFocusObject()
+    appName = focus.appModule.appName
+    if appName.lower() in getConfig("applicationsBlacklist").lower().strip().split(","):
+        return True
+    return False
+
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
-    if getConfig("enabled") and not rulesDialogOpen:
+    if isAppBlacklisted() != True and getConfig("enabled") and not rulesDialogOpen:
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
-        for rule in rules:
+        for rule in rulesByFrenzy[FrenzyType.TEXT]:
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
         #mylog("Speaking!")
@@ -500,6 +572,48 @@ def preCancelSpeech(*args, **kwargs):
         localCurrentChain.terminate()
     originalSpeechCancel(*args, **kwargs)
 
+def preProcessSpeechSymbols(locale, text, level):
+    global rulesByFrenzy
+    #mylog(f"preprocess '{text}'")
+    n = len(text)
+    pattern = "|".join([
+        rule.pattern
+        for rule in rulesByFrenzy[FrenzyType.TEXT]
+        if rule.enabled and rule.passThrough
+    ])
+    pattern = f"({pattern})+"
+    #mylog(f"pattern={pattern}")
+    r = re.compile(pattern, re.UNICODE)
+    if r.search(""):
+        # This is very wrong, just return patched function instead
+        return originalProcessSpeechSymbols(locale, text, level)
+    prevIndex = 0
+    result = []
+    for m in r.finditer(text):
+        start = m.start(0)
+        end = m.end(0)
+        prefix = text[prevIndex:start]
+        if len(prefix) > 0 and not speech.isBlank(prefix):
+            chunk = originalProcessSpeechSymbols(locale, prefix, level)
+            #mylog(f"{prefix} >> {chunk}")
+            result.append(chunk)
+        result.append(m.group(0))
+        #mylog(f"=={m.group(0)}")
+        prevIndex = end
+    suffix = text[prevIndex:]
+    if (
+        prevIndex == 0
+        or (
+            len(suffix) > 0 and
+            not speech.isBlank(suffix)
+        )
+    ):
+        chunk = originalProcessSpeechSymbols(locale, suffix, level)
+        result.append(chunk)
+    finalResult = "".join(result)
+    #mylog(f"finalResult={finalResult}")
+    return finalResult
+
 def preTonesInitialize(*args, **kwargs):
     result = originalTonesInitialize(*args, **kwargs)
     try:
@@ -509,19 +623,24 @@ def preTonesInitialize(*args, **kwargs):
     return result
 
 def injectMonkeyPatches():
-    global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
+    global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize, originalProcessSpeechSymbols
     originalSpeechSpeechSpeak = speech.speech.speak
     speech.speech.speak = preSpeak
     originalSpeechCancel = speech.speech.cancelSpeech
     speech.speech.cancelSpeech = preCancelSpeech
+    originalProcessSpeechSymbols = characterProcessing.processSpeechSymbols
+    characterProcessing.processSpeechSymbols = preProcessSpeechSymbols
     originalTonesInitialize = tones.initialize
     tones.initialize = preTonesInitialize
+    frenzy.monkeyPatch()
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
     speech.speech.speak = originalSpeechSpeechSpeak
     speech.speech.cancelSpeech = originalSpeechCancel
+    characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
+    frenzy.monkeyUnpatch()
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -536,11 +655,12 @@ def processRule(speechSequence, rule, symbolLevel):
 
 def postProcessSynchronousCommands(speechSequence, symbolLevel):
     language=speech.getCurrentLanguage()
-    speechSequence = [element for element in speechSequence
+    speechSequence = [
+        element 
+        for element in speechSequence
         if not isinstance(element, str)
         or not speech.isBlank(speech.processText(language,element,symbolLevel))
     ]
-
     newSequence = []
     for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
         if isSynchronous:
@@ -551,6 +671,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
         else:
             newSequence.extend(values)
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
+    newSequence = unmaskMaskedStrings(newSequence)
     return newSequence
 
 def eloquenceFix(speechSequence, language, symbolLevel):
@@ -573,3 +694,12 @@ def eloquenceFix(speechSequence, language, symbolLevel):
         ):
             indicesToRemove.append(i)
     return [speechSequence[i] for i in range(len(speechSequence)) if i not in indicesToRemove]
+
+def unmaskMaskedStrings(sequence):
+    result = []
+    for item in sequence:
+        if isinstance(item, MaskedString):
+            result.append(item.s)
+        else:
+            result.append(item)
+    return result
