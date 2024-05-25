@@ -481,11 +481,14 @@ def reloadRules():
         rulesConfig = defaultRules
     mylog(rulesConfig)
     rules = []
+    errors = []
     for ruleDict in json.loads(rulesConfig):
         try:
             rules.append(AudioRule(**ruleDict))
         except Exception as e:
-            log.error("Failed to load audio rule", e)
+            errors.append(e)
+    if len(errors) > 0:
+        log.error(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
 
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
@@ -511,6 +514,7 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
         mylog(str(newSequence))
     else:
         newSequence = speechSequence
+    newSequence = newSequence + [' '] # Otherwise v2024.2 throws weird Braille Exception + 
     return originalSpeechSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
 
 def preCancelSpeech(*args, **kwargs):

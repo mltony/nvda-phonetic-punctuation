@@ -21,7 +21,7 @@ addon_info = {
     "addon_description": _("""Phonetic punctuation add-on.
 Allows to replace punctuation marks in speech, along with any regular expression patterns with customizable auditory icons. """),
     # version
-    "addon_version": "1.7",
+    "addon_version": "1.8",
     # Author(s)
     "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
     # URL for the add-on documentation support
@@ -31,7 +31,7 @@ Allows to replace punctuation marks in speech, along with any regular expression
     # Minimum NVDA version supported (e.g. "2018.3")
     "addon_minimumNVDAVersion": "2019.3.0",
     # Last NVDA version supported/tested (e.g. "2018.4", ideally more recent than minimum version)
-    "addon_lastTestedNVDAVersion": "2023.1.0",
+    "addon_lastTestedNVDAVersion": "2024.1.0",
     # Add-on update channel (default is stable or None)
     "addon_updateChannel": None,
 }
