@@ -31,7 +31,6 @@ import re
 from scriptHandler import script, willSayAllResume
 import speech
 import speech.commands
-import sre_constants
 import struct
 import textInfos
 import threading
@@ -235,7 +234,7 @@ class AudioRuleDialog(wx.Dialog):
             return
         try:
             r = re.compile(self.patternTextCtrl.GetValue())
-        except sre_constants.error:
+        except re.error:
             # Translators: Invalid regular expression
             gui.messageBox(_("Invalid regular expression."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
             self.patternTextCtrl.SetFocus()

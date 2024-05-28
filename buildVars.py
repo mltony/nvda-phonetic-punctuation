@@ -21,7 +21,7 @@ addon_info = {
     "addon_description": _("""Phonetic punctuation add-on.
 Allows to replace punctuation marks in speech, along with any regular expression patterns with customizable auditory icons. """),
     # version
-    "addon_version": "1.8",
+    "addon_version": "1.9",
     # Author(s)
     "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
     # URL for the add-on documentation support
