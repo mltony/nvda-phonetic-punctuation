@@ -40,7 +40,7 @@ import tones
 import ui
 import wave
 import wx
-
+from . import common
 
 debug = False
 if debug:
@@ -121,3 +121,13 @@ def getSoundsPath():
     addonPath = os.path.split(addonPath)[0]
     soundsPath = os.path.join(addonPath, "sounds")
     return soundsPath
+
+def isAppBlacklisted():
+    focus = api.getFocusObject()
+    appName = focus.appModule.appName
+    if appName.lower() in getConfig("applicationsBlacklist").lower().strip().split(","):
+        return True
+    return False
+
+def isPhoneticPunctuationEnabled():
+    return not isAppBlacklisted() and  getConfig("enabled") and not  common.rulesDialogOpen

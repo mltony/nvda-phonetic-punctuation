@@ -44,7 +44,7 @@ import wx
 from .phoneticPunctuation import *
 from . import phoneticPunctuation as pp
 from .utils import *
-
+from . import common
 class AudioRuleDialog(wx.Dialog):
     TYPE_LABELS = {
         audioRuleBuiltInWave: _("&Built in wave"),
@@ -451,14 +451,13 @@ class AudioRuleDialog(wx.Dialog):
             break
 
     def onTestClick(self, evt):
-        global rulesDialogOpen
         if time.time() - self.lastTestTime < 1:
             # Button pressed twice within a second
             repeat = True
         else:
             repeat = False
         self.lastTestTime = time.time()
-        rulesDialogOpen = False
+        common.rulesDialogOpen = False
         try:
             rule = self.makeRule()
             if rule is None:
@@ -475,7 +474,7 @@ class AudioRuleDialog(wx.Dialog):
             speech.cancelSpeech()
             speech.speak(utterance)
         finally:
-            rulesDialogOpen = True
+            common.rulesDialogOpen = True
 
     def getBiwCategories(self):
         soundsPath = getSoundsPath()
@@ -546,7 +545,6 @@ class RulesDialog(SettingsPanel):
     title = _("Phonetic Punctuation  rules")
 
     def makeSettings(self, settingsSizer):
-        global rulesDialogOpen
         rulesDialogOpen = True
         pp.reloadRules()
         self.allRules = [rule for frenzyType, rules in pp.rulesByFrenzy.items() for rule in rules]
@@ -730,8 +728,7 @@ class RulesDialog(SettingsPanel):
         self.rulesList.SetFocus()
 
     def onSave(self):
-        global rulesDialogOpen
-        rulesDialogOpen = False
+        common.rulesDialogOpen = False
         self.updateAllRules(self.frenzyType)
         rulesDicts = [rule.asDict() for rule in self.allRules]
         rulesJson = json.dumps(rulesDicts, indent=4, sort_keys=True)
@@ -745,5 +742,4 @@ class RulesDialog(SettingsPanel):
         setConfig("applicationsBlacklist",self.applicationsBlacklistEdit.Value)
 
     def onDiscard(self):
-        global rulesDialogOpen
-        rulesDialogOpen = False
+        common.rulesDialogOpen = False

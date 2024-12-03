@@ -37,3 +37,5 @@ FRENZY_NAMES_SINGULAR = {
     FrenzyType.STATE: "State",
     FrenzyType.FORMAT: "Format",
 }
+
+rulesDialogOpen = False

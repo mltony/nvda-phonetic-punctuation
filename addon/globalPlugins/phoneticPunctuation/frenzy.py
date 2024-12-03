@@ -58,7 +58,7 @@ def new_getObjectPropertiesSpeech(
         _prefixSpeechCommand = None,
         **allowedProperties
 ):
-    if obj is None:
+    if obj is None or not isPhoneticPunctuationEnabled():
         return original_getObjectPropertiesSpeech(
             obj,reason , _prefixSpeechCommand , **allowedProperties
         )
