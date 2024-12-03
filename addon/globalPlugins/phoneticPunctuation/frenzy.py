@@ -34,7 +34,6 @@ import re
 from scriptHandler import script, willSayAllResume
 import speech
 import speech.commands
-import sre_constants
 import struct
 import textInfos
 import threading

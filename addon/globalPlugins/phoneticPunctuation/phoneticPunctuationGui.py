@@ -566,6 +566,7 @@ class RulesDialog(SettingsPanel):
         self.frenzyType = None
 
       # Rules table
+        self.prepareRulesForFrenzy(FrenzyType.TEXT)
         rulesText = _("&Rules")
         self.rulesList = sHelper.addLabeledControl(
             rulesText,
@@ -581,7 +582,7 @@ class RulesDialog(SettingsPanel):
         self.rulesList.InsertColumn(2, _("Type"))
         self.rulesList.InsertColumn(3, _("Effect"))
         self.rulesList.Bind(wx.EVT_LIST_ITEM_FOCUSED, self.onListItemFocused)
-        self.rulesList.ItemCount = len(self.allRules)
+        self.rulesList.ItemCount = len(self.frenzyRules)
       # Buttons
         bHelper = sHelper.addItem(guiHelper.ButtonHelper(orientation=wx.HORIZONTAL))
         self.toggleButton = bHelper.addButton(self, label=_("Toggle"))
@@ -602,7 +603,7 @@ class RulesDialog(SettingsPanel):
 
     def postInit(self):
         self.frenzyCategory.SetFocus()
-        self.frenzyCategory.control.SetSelection(0)
+        self.frenzyCategory.control.SetSelection(1)
 
     def getItemTextForList(self, item, column):
         try:
@@ -631,18 +632,21 @@ class RulesDialog(SettingsPanel):
                 key=lambda r:r.getFrenzyType().value,
             )
             self.frenzyRules = None
+        
+    def prepareRulesForFrenzy(self, frenzyType):
+        self.frenzyType = frenzyType
+        self.frenzyRules = [
+            rule
+            for rule in self.allRules
+            if rule.getFrenzyType() == self.frenzyType
+        ]
 
     def onFrenzyType(self, evt):
         oldFrenzyType = self.frenzyType
         if oldFrenzyType is not None:
             self.updateAllRules(oldFrenzyType)
         i = self.frenzyCategory.control.GetSelection()
-        self.frenzyType = list(FrenzyType)[i]
-        self.frenzyRules = [
-            rule
-            for rule in self.allRules
-            if rule.getFrenzyType() == self.frenzyType
-        ]
+        self.prepareRulesForFrenzy(list(FrenzyType)[i])
         self.rulesList.ItemCount = len(self.frenzyRules)
 
     def onListItemFocused(self, evt):
