@@ -48,8 +48,7 @@ from .common import *
 from .utils import *
 from .commands import *
 from . import phoneticPunctuation as pp
-
-
+from controlTypes import OutputReason
 original_getObjectPropertiesSpeech = None
 
 def new_getObjectPropertiesSpeech(
@@ -90,9 +89,14 @@ def monkeyPatch():
     global original_getObjectPropertiesSpeech
     original_getObjectPropertiesSpeech = speech.speech.getObjectPropertiesSpeech
     speech.speech.getObjectPropertiesSpeech = new_getObjectPropertiesSpeech
+    
+    global original_getTextInfoSpeech
+    original_getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    speech.speech.getTextInfoSpeech = new_getTextInfoSpeech
 
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
+    speech.speech.getTextInfoSpeech = original_getTextInfoSpeech
 
 roleRules = None
 stateRules = None
@@ -106,3 +110,255 @@ def updateRules():
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.STATE]
     }
+
+class FakeTextInfo:
+    def __init__(self, info, formatConfig):
+        self.info = info
+        self.formatConfig = formatConfig
+        self.fields = info.getTextWithFields(formatConfig)
+    
+    def setSkipSet(self, skipSet):
+        self.skipSet = skipSet
+        
+    def setStartAndEnd(self, start, end):
+        self.start, self.end = start, end
+
+    def getTextWithFields(self, formatConfig= None):
+        if formatConfig != self.formatConfig:
+            raise ValueError
+        stack = []
+        info = self.info
+        skipSet = self.skipSet
+        start = self.start
+        end = self.end
+        result = []
+        fields = self.fields
+        controlStackDepth = 0
+        for i, field in enumerate(fields[:end]):
+            if i in skipSet:
+                continue
+            if isinstance(field,textInfos.FieldCommand):
+                if field.command == "controlStart":
+                    controlStackDepth += 1
+                elif field.command == "controlEnd":
+                    controlStackDepth -= 1
+            if i < start:
+                if isinstance(field,textInfos.FieldCommand):
+                    if field.command == "controlStart":
+                        result.append(field)
+                    elif field.command == "controlEnd":
+                        del result[-1]
+            else:
+                result.append(field)
+        result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
+        return result
+
+    def getControlFieldSpeech(
+            self,
+            attrs,
+            ancestorAttrs,
+            fieldType,
+            formatConfig = None,
+            extraDetail = False,
+            reason= None
+    ):
+        return self.info.getControlFieldSpeech(
+            attrs,
+            ancestorAttrs,
+            fieldType,
+            formatConfig,
+            extraDetail,
+            reason,
+        )
+
+    def getFormatFieldSpeech(
+            self,
+            attrs,
+            attrsCache= None,
+            formatConfig= None,
+            reason = None,
+            unit = None,
+            extraDetail = False,
+            initialFormat = False,
+    ):
+        return self.info.getFormatFieldSpeech(
+            attrs,
+            attrsCache,
+            formatConfig,
+            reason ,
+            unit ,
+            extraDetail ,
+            initialFormat ,
+        )
+    @property
+    def obj(self):
+        return self.info.obj
+
+def findControlEnd(fields, start):
+    i = start
+    stack = []
+    while i < len(fields):
+        field = fields[i]
+        if isinstance(field,textInfos.FieldCommand):
+            if field.command == "controlStart":
+                stack.append(field)
+            elif field.command == "controlEnd":
+                del stack[-1]
+        if len(stack) == 0:
+            return i
+        i += 1
+    raise RuntimeError()
+
+
+def findAllHeadings(fields):
+    for i, field in enumerate(fields):
+        if isinstance(field,textInfos.FieldCommand):
+            if field.command == "controlStart":
+                try:
+                    if field.field['role'] == controlTypes.Role.HEADING:
+                        yield i
+                except KeyError:
+                    pass
+
+def isBlankSequence(sequence):
+    for grouping  in sequence:
+        for s in grouping:
+            if isinstance(s, str)  and not speech.speech.isBlank(s):
+                return False
+    return True
+
+
+original_getTextInfoSpeech = None
+api.s = []
+api.b = []
+
+def new_getTextInfoSpeech(
+        info,
+        useCache = True,
+        formatConfig= None,
+        unit = None,
+        reason = OutputReason.QUERY,
+        _prefixSpeechCommand= None,
+        onlyInitialFields = False,
+        suppressBlanks = False
+):
+    if not isPhoneticPunctuationEnabled():
+        yield from original_getTextInfoSpeech(
+            info,
+            useCache ,
+            formatConfig,
+            unit ,
+            reason ,
+            _prefixSpeechCommand,
+            onlyInitialFields,
+            suppressBlanks,
+        )
+        return
+    if True:
+        # Computing if - identical to logic in the original function
+        extraDetail = unit in (textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD)
+        if not formatConfig:
+            formatConfig = config.conf["documentFormatting"]
+        formatConfig = formatConfig.copy()
+        if extraDetail:
+            formatConfig["extraDetail"] = True
+        # For performance reasons, when navigating by paragraph or table cell, spelling errors will not be announced.
+        if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
+            formatConfig["reportSpellingErrors"] = False
+    processHeadings = True
+    headingRule = pp.AudioRule(
+        comment='asdf',
+        pattern="",
+        ruleType=audioRuleProsody,
+        wavFile=None,
+        builtInWavFile=None,
+        startAdjustment=0,
+        endAdjustment=0,
+        tone=None,
+        duration=None,
+        enabled=True,
+        caseSensitive=True,
+        prosodyName="Pitch",
+        prosodyOffset=None,
+        prosodyMultiplier=None,
+        volume=100,
+        passThrough=False,
+        frenzyType=FrenzyType.NUMERIC_FORMAT.name,
+        frenzyValue=NumericTextFormat.HEADING_LEVEL,
+        minNumericValue=1,
+        maxNumericValue=6,
+        prosodyMinOffset=-30,
+        prosodyMaxOffset=30,
+        replacementPattern=None,
+    )
+    fakeTextInfo  = FakeTextInfo(info, formatConfig)
+    fields = fakeTextInfo.fields
+    
+    #skip set contains indices where heading controls start and end.
+    # We will filter them out before returning from this function as we don't want built-in NVDA logic to double-process headings.
+    # They also serve as boundaries for other font attribute processing as typically text formatting changes when we enter/exit a heading.
+    skipSet = set()
+    newCommands = collections.defaultdict(lambda: [])
+    if processHeadings:
+        headingStarts = list(findAllHeadings(fields))
+        headingEnds = [findControlEnd(fields, headingSstart) for headingSstart in headingStarts]
+        nHeadings = len(headingStarts)
+        for i in range(nHeadings - 1):
+            if headingStarts[i + 1] < headingEnds[i]:
+                log.error("Nested headings detected. Earcons add-on doesn't support that yet.")
+                yield from original_getTextInfoSpeech(
+                    info,
+                    useCache ,
+                    formatConfig,
+                    unit ,
+                    reason ,
+                    _prefixSpeechCommand,
+                    onlyInitialFields,
+                    suppressBlanks,
+                )
+                return
+        skipSet.update(headingStarts)
+        skipSet.update(headingEnds)
+        for start, end in zip(headingStarts, headingEnds):
+            level = fields[start].field.get('level', 1)
+            try:
+                level = int(level)
+            except ValueError:
+                continue
+            preCommand, postCommand = headingRule.getNumericSpeechCommand(level)
+            if preCommand is not None:
+                newCommands[start].append(preCommand)
+            if postCommand is not None:
+                newCommands[end].append(postCommand)
+    # TODO: process font attributes here
+    previousIndex = 0
+    fakeTextInfo.setSkipSet(skipSet)
+    #tones.beep(500, 50)
+    s = []
+    api.s.append(s)
+    b = []
+    api.b.append(b)
+    nFields = len(fields)
+    isBlankSoFar = True
+    for i in sorted(newCommands.keys()) + [nFields]:
+        fakeTextInfo.setStartAndEnd(previousIndex, i)
+        sequence = list(original_getTextInfoSpeech(
+            fakeTextInfo,
+            useCache ,
+            formatConfig,
+            unit ,
+            reason ,
+            _prefixSpeechCommand,
+            onlyInitialFields,
+            suppressBlanks=suppressBlanks if i == nFields and isBlankSoFar else True,
+        ))
+        s.append(sequence)
+        b.append(isBlankSequence(sequence))
+        if not isBlankSequence(sequence):
+            isBlankSoFar = False
+            yield from sequence
+        try:
+            yield newCommands[i]
+        except KeyError:
+            pass
+        previousIndex = i

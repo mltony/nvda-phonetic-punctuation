@@ -22,6 +22,7 @@ class FrenzyType(Enum):
     ROLE = 'role'
     STATE = 'state'
     FORMAT = 'format'
+    NUMERIC_FORMAT = 'numeric_format'
 
 
 FRENZY_NAMES = {
@@ -29,6 +30,7 @@ FRENZY_NAMES = {
     FrenzyType.ROLE: "Roles",
     FrenzyType.STATE: "States",
     FrenzyType.FORMAT: "Text formatting",
+    FrenzyType.NUMERIC_FORMAT: "Numeric text formatting",
 }
 
 FRENZY_NAMES_SINGULAR = {
@@ -36,6 +38,30 @@ FRENZY_NAMES_SINGULAR = {
     FrenzyType.ROLE: "Role",
     FrenzyType.STATE: "State",
     FrenzyType.FORMAT: "Format",
+    FrenzyType.NUMERIC_FORMAT: "Numeric format",
 }
 
 rulesDialogOpen = False
+
+class TextFormat(Enum):
+    BOLD = 'bold'
+    ITALIC = 'italic'
+    SUPERSCRIPT = 'superscript'
+    SUBSCRIPT = 'subscript'
+    HEADING = 'heading'
+TEXT_FORMAT_NAMES = {
+    TextFormat.BOLD: _('Bold'),
+    TextFormat.ITALIC: _('Italic'),
+    TextFormat.SUPERSCRIPT: _('Superscript'),
+    TextFormat.SUBSCRIPT: _('Subscript'),
+    TextFormat.HEADING: _('Heading'),
+}
+
+class NumericTextFormat(Enum):
+    FONT_SIZE = 'font_size'
+    HEADING_LEVEL = 'heading_level'
+
+NUMERIC_TEXT_FORMAT_NAMES = {
+    NumericTextFormat.FONT_SIZE: _('Font size'),
+    NumericTextFormat.HEADING_LEVEL: _('Heading level'),
+}

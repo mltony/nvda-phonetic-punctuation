@@ -338,11 +338,14 @@ audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
 audioRuleBeep = "beep"
 audioRuleProsody = "prosody"
+audioTextReplacement = "textReplacement"
+
 audioRuleTypes = [
     audioRuleBuiltInWave,
     audioRuleWave,
     audioRuleBeep,
     audioRuleProsody,
+    audioTextReplacement,
 ]
 
 class MaskedString:
@@ -350,7 +353,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue minNumericValue maxNumericValue prosodyMinOffset prosodyMaxOffset replacementPattern".split()
     def __init__(
         self,
         comment,
@@ -371,6 +374,11 @@ class AudioRule:
         passThrough=False,
         frenzyType=FrenzyType.TEXT.name,
         frenzyValue="",
+        minNumericValue=None,
+        maxNumericValue=None,
+        prosodyMinOffset=None,
+        prosodyMaxOffset=None,
+        replacementPattern=None,
     ):
         self.comment = comment
         self.pattern = pattern
@@ -396,6 +404,11 @@ class AudioRule:
             self.frenzyValue = frenzyValue.name
         else:
             self.frenzyValue = frenzyValue
+        self.minNumericValue = minNumericValue
+        self.maxNumericValue = maxNumericValue
+        self.prosodyMinOffset = prosodyMinOffset
+        self.prosodyMaxOffset = prosodyMaxOffset
+        self.replacementPattern = replacementPattern
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
@@ -477,6 +490,31 @@ class AudioRule:
             postCommand = classClass()
             return preCommand, postCommand
             
+        else:
+            raise ValueError()
+
+    def getNumericSpeechCommand(self, numericValue):
+        if self.ruleType == audioRuleProsody:
+            className = self.prosodyName
+            className = className[0].upper() + className[1:] + 'Command'
+            classClass = getattr(speech.commands, className)
+            if (
+                self.minNumericValue is None or
+                self.maxNumericValue is None or 
+                self.prosodyMinOffset is None or 
+                self.prosodyMaxOffset  is None
+            ):
+                raise ValueError
+            numericValue = max(self.minNumericValue, min(self.maxNumericValue, numericValue))
+            offset = self.prosodyMinOffset + (self.prosodyMaxOffset - self.prosodyMinOffset) * (numericValue - self.minNumericValue) / (self.maxNumericValue - self.minNumericValue)
+            preCommand = classClass(offset=offset)
+            postCommand = classClass()
+            return preCommand, postCommand
+        elif self.ruleType == audioTextReplacement:
+            if self.replacementPattern is None:
+                raise ValueError
+            preCommand = self.replacementPattern.format(numericValue)
+            return preCommand, None
         else:
             raise ValueError()
 

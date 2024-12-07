@@ -74,7 +74,9 @@ class AudioRuleDialog(wx.Dialog):
         elif frenzyType        == FrenzyType.TEXT:
             self.possibleFrenzyValues = []
         elif frenzyType        == FrenzyType.FORMAT:
-            self.possibleFrenzyValues = []
+            self.possibleFrenzyValues = [TEXT_FORMAT_NAMES[f] for f in TextFormat]
+        elif frenzyType        == FrenzyType.NUMERIC_FORMAT:
+            self.possibleFrenzyValues = [NUMERIC_TEXT_FORMAT_NAMES[f] for f in NumericTextFormat]
         else:
             raise RuntimeError
         self.disallowedFrenzyValues = disallowedFrenzyValues
