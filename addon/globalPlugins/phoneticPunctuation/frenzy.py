@@ -339,26 +339,55 @@ def new_getTextInfoSpeech(
     b = []
     api.b.append(b)
     nFields = len(fields)
-    isBlankSoFar = True
+    intervalsAndCommands = []
+    nIntervals = 0
+    emptyIntervals = set()
     for i in sorted(newCommands.keys()) + [nFields]:
-        fakeTextInfo.setStartAndEnd(previousIndex, i)
-        sequence = list(original_getTextInfoSpeech(
-            fakeTextInfo,
-            useCache ,
-            formatConfig,
-            unit ,
-            reason ,
-            _prefixSpeechCommand,
-            onlyInitialFields,
-            suppressBlanks=suppressBlanks if i == nFields and isBlankSoFar else True,
-        ))
-        s.append(sequence)
-        b.append(isBlankSequence(sequence))
-        if not isBlankSequence(sequence):
-            isBlankSoFar = False
-            yield from sequence
+        intervalsAndCommands.append((previousIndex, i))
+        nIntervals += 1
+        # If there are no str fields in this range, skip it, otherwise it'll believe we exited some controls and store that in the cache.
+        isEmpty = not any(isinstance(field, str) and not speech.speech.isBlank(field) for field in fields[previousIndex:i])
+        if isEmpty:
+            emptyIntervals.add(len(intervalsAndCommands) - 1)
         try:
-            yield newCommands[i]
+            intervalsAndCommands.append(newCommands[i])
         except KeyError:
             pass
         previousIndex = i
+    emptyIndex = 0
+    allEmpty = nIntervals == len(emptyIntervals)
+    filteredIntervalsAndCommands = []
+    # Filtering out empty intervals. However, if all intervals are empty, we would like to keep the first one.
+    for i, interval in enumerate(intervalsAndCommands):
+        if isinstance(interval, list):
+            filteredIntervalsAndCommands.append(interval)
+        elif isinstance(interval, tuple):
+            isEmpty = i in emptyIntervals
+            if not isEmpty or (allEmpty and emptyIndex ==0):
+                filteredIntervalsAndCommands.append(interval)
+            emptyIndex += int(isEmpty)
+        else:
+            raise RuntimeError
+    result = []
+    for item in filteredIntervalsAndCommands:
+        if isinstance(item, list):
+            # Injected commands
+            result.append(item)
+        elif isinstance(item, tuple):
+            # Interval
+            i, j = item
+            fakeTextInfo.setStartAndEnd(i, j)
+            sequence = list(original_getTextInfoSpeech(
+                fakeTextInfo,
+                useCache ,
+                formatConfig,
+                unit ,
+                reason ,
+                _prefixSpeechCommand,
+                onlyInitialFields,
+                suppressBlanks=suppressBlanks,
+            ))
+            #yield from sequence
+            result.extend(sequence)
+    result = [[item for subgroup in result for item in subgroup]]
+    yield from result

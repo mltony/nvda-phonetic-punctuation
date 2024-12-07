@@ -605,8 +605,10 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
 def preCancelSpeech(*args, **kwargs):
     localCurrentChain = currentChain
     if localCurrentChain is not None:
+        tones.beep(500, 50)
         localCurrentChain.terminate()
     originalSpeechCancel(*args, **kwargs)
+    
 
 def preProcessSpeechSymbols(locale, text, level):
     global rulesByFrenzy
@@ -664,6 +666,7 @@ def injectMonkeyPatches():
     speech.speech.speak = preSpeak
     originalSpeechCancel = speech.speech.cancelSpeech
     speech.speech.cancelSpeech = preCancelSpeech
+    speech.cancelSpeech = speech.speech.cancelSpeech
     originalProcessSpeechSymbols = characterProcessing.processSpeechSymbols
     characterProcessing.processSpeechSymbols = preProcessSpeechSymbols
     originalTonesInitialize = tones.initialize
@@ -674,6 +677,7 @@ def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
     speech.speech.speak = originalSpeechSpeechSpeak
     speech.speech.cancelSpeech = originalSpeechCancel
+    speech.cancelSpeech = speech.speech.cancelSpeech
     characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
     frenzy.monkeyUnpatch()
