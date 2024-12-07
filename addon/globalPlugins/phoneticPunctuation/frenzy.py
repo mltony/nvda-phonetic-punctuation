@@ -346,7 +346,7 @@ def new_getTextInfoSpeech(
         intervalsAndCommands.append((previousIndex, i))
         nIntervals += 1
         # If there are no str fields in this range, skip it, otherwise it'll believe we exited some controls and store that in the cache.
-        isEmpty = not any(isinstance(field, str) and not speech.speech.isBlank(field) for field in fields[previousIndex:i])
+        isEmpty = not any(isinstance(field, str) for field in fields[previousIndex:i])
         if isEmpty:
             emptyIntervals.add(len(intervalsAndCommands) - 1)
         try:
