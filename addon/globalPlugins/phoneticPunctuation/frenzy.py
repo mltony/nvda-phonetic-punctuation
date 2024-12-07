@@ -389,5 +389,7 @@ def new_getTextInfoSpeech(
             ))
             #yield from sequence
             result.extend(sequence)
+    # At this point result is a list of lists of speech commands.
+    # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
     yield from result
