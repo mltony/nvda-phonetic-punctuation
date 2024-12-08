@@ -107,18 +107,22 @@ def updateRules():
     roleRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.ROLE]
+        if rule.enabled
     }
     stateRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.STATE]
+        if rule.enabled
     }
     formatRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.FORMAT]
+        if rule.enabled
     }
     numericFormatRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.NUMERIC_FORMAT]
+        if rule.enabled
     }
 
 

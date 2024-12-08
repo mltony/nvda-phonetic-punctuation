@@ -47,6 +47,7 @@ import wx
 from .common import *
 from .utils import *
 from .commands import *
+from . import commands
 from . import frenzy
 
 defaultRules = """
@@ -615,10 +616,10 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
     return originalSpeechSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
 
 def preCancelSpeech(*args, **kwargs):
-    localCurrentChain = currentChain
-    if localCurrentChain is not None:
-        tones.beep(500, 50)
-        localCurrentChain.terminate()
+    if isPhoneticPunctuationEnabled():
+        localCurrentChain = commands.currentChain
+        if localCurrentChain is not None:
+            localCurrentChain.terminate()
     originalSpeechCancel(*args, **kwargs)
     
 
@@ -755,3 +756,4 @@ def unmaskMaskedStrings(sequence):
         else:
             result.append(item)
     return result
+

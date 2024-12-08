@@ -149,6 +149,7 @@ class PpChainCommand(PpSynchronousCommand):
         return sum([subcommand.getDuration() for subcommand in self.subcommands])
 
     def threadFunc(self):
+        global currentChain
         timestamp = time.time()
         for subcommand in self.subcommands:
             if self.terminated:
@@ -158,6 +159,7 @@ class PpChainCommand(PpSynchronousCommand):
             sleepTime = timestamp - time.time()
             time.sleep(sleepTime)
         currentChain = None
+        
 
     def __repr__(self):
         return f"PpChainCommand({self.subcommands})"
