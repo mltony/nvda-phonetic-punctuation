@@ -77,7 +77,7 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleWave,
         audioRuleBeep,
         audioRuleProsody,
-        audioRuleTextSubstitution,
+        #audioRuleTextSubstitution,
     ],
     FrenzyType.ROLE: [
         audioRuleBuiltInWave,

@@ -339,14 +339,12 @@ audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
 audioRuleBeep = "beep"
 audioRuleProsody = "prosody"
-audioTextReplacement = "textReplacement"
 
 audioRuleTypes = [
     audioRuleBuiltInWave,
     audioRuleWave,
     audioRuleBeep,
     audioRuleProsody,
-    audioTextReplacement,
 ]
 
 class MaskedString:
@@ -523,7 +521,7 @@ class AudioRule:
             preCommand = classClass(offset=offset)
             postCommand = classClass()
             return preCommand, postCommand
-        elif self.ruleType == audioTextReplacement:
+        elif self.ruleType == audioRuleTextSubstitution:
             if self.replacementPattern is None:
                 raise ValueError
             preCommand = self.replacementPattern.format(numericValue)

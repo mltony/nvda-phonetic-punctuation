@@ -238,7 +238,12 @@ class AudioRuleDialog(wx.Dialog):
             )
             for name, entry in numericProsodyControlsData.items()
         }
-        self.typeControls[audioRuleNumericProsody].extend(self.numericProsodyControls.values())
+        self.typeControls[audioRuleNumericProsody].extend(list(self.numericProsodyControls.values()))
+      # Text replacement edit box
+        label = _("&Replacement pattern")
+        self.replacementPatternTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+        self.typeControls[audioRuleTextSubstitution].append(self.replacementPatternTextCtrl)
+
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
@@ -316,6 +321,7 @@ class AudioRuleDialog(wx.Dialog):
         self.passThroughCheckBox.SetValue(rule.passThrough)
         for name, control in self.numericProsodyControls.items():
             control.SetValue(getattr(rule, name))
+        self.replacementPatternTextCtrl.SetValue(rule.replacementPattern or "")
         self.onType(None)
 
     def makeRule(self):
@@ -372,6 +378,21 @@ class AudioRuleDialog(wx.Dialog):
                 gui.messageBox(_("Invalid wav file."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.wavName.SetFocus()
                 return
+        elif self.getType() == audioRuleTextSubstitution:
+            if self.frenzyType == FrenzyType.NUMERIC_FORMAT:
+                sampleLevel = 1
+                replacementPattern = self.replacementPatternTextCtrl.GetValue()
+                try:
+                    replacementPattern.format(sampleLevel)
+                except ValueError as e:
+                    gui.messageBox(
+                        _("Invalid replacement pattern: {}\nPlesae use curly braces {} as a format placeholder; please don't use any other curly braces in replacement string.").format(str(e)), 
+                        _("Dictionary Entry Error"), 
+                        wx.OK|wx.ICON_WARNING, 
+                        self,
+                    )
+                    self.replacementPatternTextCtrl.SetFocus()
+                    return
         try:
             self.getInt(self.startAdjustmentTextCtrl.GetValue())
         except ValueError:
@@ -477,6 +498,7 @@ class AudioRuleDialog(wx.Dialog):
                 maxNumericValue=self.numericProsodyControls['maxNumericValue'].GetValue(),
                 prosodyMinOffset=self.numericProsodyControls['prosodyMinOffset'].GetValue(),
                 prosodyMaxOffset=self.numericProsodyControls['prosodyMaxOffset'].GetValue(),
+                replacementPattern = self.replacementPatternTextCtrl.GetValue(),
             )
             return result
         except Exception as e:
