@@ -10,11 +10,16 @@ audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
 audioRuleBeep = "beep"
 audioRuleProsody = "prosody"
+audioRuleNumericProsody = "numericProsody"
+audioRuleTextSubstitution = "textSubstitution"
+
 audioRuleTypes = [
     audioRuleBuiltInWave,
     audioRuleWave,
     audioRuleBeep,
     audioRuleProsody,
+    audioRuleNumericProsody,
+    audioRuleTextSubstitution,
 ]
 
 class FrenzyType(Enum):
@@ -64,4 +69,39 @@ class NumericTextFormat(Enum):
 NUMERIC_TEXT_FORMAT_NAMES = {
     NumericTextFormat.FONT_SIZE: _('Font size'),
     NumericTextFormat.HEADING_LEVEL: _('Heading level'),
+}
+
+ALLOWED_TYPES_BY_FRENZY_TYPE = {
+    FrenzyType.TEXT: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
+    FrenzyType.ROLE: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        #audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
+    FrenzyType.STATE: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
+    FrenzyType.FORMAT: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
+    FrenzyType.NUMERIC_FORMAT: [
+        audioRuleNumericProsody,
+        audioRuleTextSubstitution,
+    ],
 }

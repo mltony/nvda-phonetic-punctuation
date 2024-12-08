@@ -374,10 +374,10 @@ class AudioRule:
         passThrough=False,
         frenzyType=FrenzyType.TEXT.name,
         frenzyValue="",
-        minNumericValue=None,
-        maxNumericValue=None,
-        prosodyMinOffset=None,
-        prosodyMaxOffset=None,
+        minNumericValue=1,
+        maxNumericValue=5,
+        prosodyMinOffset=-10,
+        prosodyMaxOffset=10,
         replacementPattern=None,
     ):
         self.comment = comment
@@ -427,6 +427,10 @@ class AudioRule:
             return f"Beep: {self.tone}@{self.duration}"
         elif self.ruleType == audioRuleProsody:
             return f"Prosody: {self.prosodyName}:{self.prosodyOffset}:{self.prosodyMultiplier}"
+        elif self.ruleType in [audioRuleTextSubstitution]:
+            return f"TextSubstitution: '{self.replacementPattern}'"
+        elif self.ruleType in [audioRuleNumericProsody]:
+            return "DynamicNumericProsody"
         else:
             raise ValueError()
 
@@ -450,7 +454,11 @@ class AudioRule:
         elif type == FrenzyType.STATE:
             return getattr(controlTypes.State, s)
         elif type == FrenzyType.FORMAT:
-            return None #TBD
+            return getattr(TextFormat, s)
+        elif type == FrenzyType.NUMERIC_FORMAT:
+            return getattr(NumericTextFormat, s)
+        else:
+            raise ValueError
 
     def getFrenzyValueStr(self):
         if len(self.frenzyValue) == 0:
@@ -462,8 +470,11 @@ class AudioRule:
         elif type == FrenzyType.STATE:
             return controlTypes.state._stateLabels[getattr(controlTypes.State, s)]
         elif type == FrenzyType.FORMAT:
-            return None #TBD
-
+            return TEXT_FORMAT_NAMES[self.getFrenzyValue()]
+        elif type == FrenzyType.NUMERIC_FORMAT:
+            return NUMERIC_TEXT_FORMAT_NAMES[self.getFrenzyValue()]
+        else:
+            raise ValueError
 
     def getSpeechCommand(self):
         if self.ruleType in [audioRuleBuiltInWave, audioRuleWave]:
@@ -489,12 +500,13 @@ class AudioRule:
                 preCommand = classClass(multiplier=self.prosodyMultiplier)
             postCommand = classClass()
             return preCommand, postCommand
-            
+        elif self.ruleType in [audioRuleTextSubstitution, audioRuleNumericProsody]:
+            return None, None
         else:
             raise ValueError()
 
     def getNumericSpeechCommand(self, numericValue):
-        if self.ruleType == audioRuleProsody:
+        if self.ruleType == audioRuleNumericProsody:
             className = self.prosodyName
             className = className[0].upper() + className[1:] + 'Command'
             classClass = getattr(speech.commands, className)

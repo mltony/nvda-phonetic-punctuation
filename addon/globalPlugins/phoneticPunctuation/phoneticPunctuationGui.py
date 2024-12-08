@@ -51,6 +51,8 @@ class AudioRuleDialog(wx.Dialog):
         audioRuleWave: _("&Wave file"),
         audioRuleBeep: _("&Beep"),
         audioRuleProsody: _("&Prosody"),
+        audioRuleNumericProsody: _("&Prosody"),
+        audioRuleTextSubstitution: _("&Text"),
     }
     PROSODY_LABELS = [
         "Pitch",
@@ -80,6 +82,7 @@ class AudioRuleDialog(wx.Dialog):
         else:
             raise RuntimeError
         self.disallowedFrenzyValues = disallowedFrenzyValues
+        self.possibleTypes = common.ALLOWED_TYPES_BY_FRENZY_TYPE[frenzyType]
         
         self.lastTestTime = 0
         super(AudioRuleDialog,self).__init__(parent,title=title)
@@ -111,16 +114,18 @@ class AudioRuleDialog(wx.Dialog):
 
       # Translators:  label for type selector radio buttons in add audio rule dialog
         typeText = _("&Type")
-        typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in AudioRuleDialog.TYPE_LABELS_ORDERING]
+        typeChoices = [AudioRuleDialog.TYPE_LABELS[i] for i in self.possibleTypes]
         self.typeRadioBox=sHelper.addItem(wx.RadioBox(self,label=typeText, choices=typeChoices))
         self.typeRadioBox.Bind(wx.EVT_RADIOBOX,self.onType)
-        self.setType(audioRuleBuiltInWave)
+        self.setType(audioRuleTextSubstitution if frenzyType == FrenzyType.NUMERIC_FORMAT else audioRuleBuiltInWave)
 
         self.typeControls = {
             audioRuleBuiltInWave: [],
             audioRuleWave: [],
             audioRuleBeep: [],
             audioRuleProsody: [],
+            audioRuleNumericProsody: [],
+            audioRuleTextSubstitution: [],
         }
 
       # Translators: built in wav category  combo box
@@ -191,6 +196,7 @@ class AudioRuleDialog(wx.Dialog):
             choices=self.PROSODY_LABELS,
         )
         self.typeControls[audioRuleProsody].append(self.prosodyNameCategory.control)
+        self.typeControls[audioRuleNumericProsody].append(self.prosodyNameCategory.control)
       # Translators: label for prosody offset
         prosodyOffsetLabelText = _("Prosody offset:")
         self.prosodyOffsetTextCtrl=sHelper.addLabeledControl(prosodyOffsetLabelText, wx.TextCtrl)
@@ -199,7 +205,40 @@ class AudioRuleDialog(wx.Dialog):
         prosodyMultiplierLabelText = _("Prosody multiplier:")
         self.prosodyMultiplierTextCtrl=sHelper.addLabeledControl(prosodyMultiplierLabelText, wx.TextCtrl)
         self.typeControls[audioRuleProsody].append(self.prosodyMultiplierTextCtrl)
-
+      # Numeric prosody edit boxes
+        numericProsodyControlsData = dict(
+            minNumericValue=dict(
+                label=_("Minimum font size or heading level"),
+                min=0,
+                max=100,
+            ),
+            maxNumericValue=dict(
+                label=_("Maximum font size or heading level"),
+                min=0,
+                max=100,
+            ),
+            prosodyMinOffset=dict(
+                label=_("Minimum prosody offset"),
+                min=-100,
+                max=100,
+            ),
+            prosodyMaxOffset=dict(
+                label=_("Maximum prosody offset"),
+                min=-100,
+                max=100,
+            ),
+        )
+        self.numericProsodyControls = {
+            name: sHelper.addLabeledControl(
+                entry['label'],
+                nvdaControls.SelectOnFocusSpinCtrl,
+                min=entry['min'],
+                max=entry['max'],
+                initial=0,
+            )
+            for name, entry in numericProsodyControlsData.items()
+        }
+        self.typeControls[audioRuleNumericProsody].extend(self.numericProsodyControls.values())
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
@@ -228,10 +267,10 @@ class AudioRuleDialog(wx.Dialog):
         typeRadioValue = self.typeRadioBox.GetSelection()
         if typeRadioValue == wx.NOT_FOUND:
             return audioRuleBuiltInWave
-        return AudioRuleDialog.TYPE_LABELS_ORDERING[typeRadioValue]
+        return self.possibleTypes[typeRadioValue]
 
     def setType(self, type):
-        self.typeRadioBox.SetSelection(AudioRuleDialog.TYPE_LABELS_ORDERING.index(type))
+        self.typeRadioBox.SetSelection(self.possibleTypes.index(type))
 
     def getInt(self, s):
         if len(s) == 0:
@@ -248,6 +287,12 @@ class AudioRuleDialog(wx.Dialog):
             idx = list(controlTypes.Role).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.STATE:
             idx = list(controlTypes.State).index(rule.getFrenzyValue())
+        elif self.frenzyType        == FrenzyType.FORMAT:
+            idx = list(TextFormat).index(rule.getFrenzyValue())
+        elif self.frenzyType        == FrenzyType.NUMERIC_FORMAT:
+            idx = list(NumericTextFormat).index(rule.getFrenzyValue())
+        else:
+            raise ValueError
         if idx is not None:
             self.frenzyValueCategory.control.SetSelection(idx)
 
@@ -269,6 +314,8 @@ class AudioRuleDialog(wx.Dialog):
         self.prosodyMultiplierTextCtrl.SetValue(str(rule.prosodyMultiplier or ""))
         #self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
         self.passThroughCheckBox.SetValue(rule.passThrough)
+        for name, control in self.numericProsodyControls.items():
+            control.SetValue(getattr(rule, name))
         self.onType(None)
 
     def makeRule(self):
@@ -297,7 +344,13 @@ class AudioRuleDialog(wx.Dialog):
             elif self.frenzyType == FrenzyType.STATE:
                 frenzyValue = [k for k, v in controlTypes.state._stateLabels.items() if v == frenzyValueStr][0]
             elif self.frenzyType == FrenzyType.FORMAT:
-                frenzyValue = ""
+                frenzyValue = [value for value, name in TEXT_FORMAT_NAMES.items() if name == frenzyValueStr][0]
+            elif self.frenzyType == FrenzyType.NUMERIC_FORMAT:
+                frenzyValue = [value for value, name in NUMERIC_TEXT_FORMAT_NAMES.items() if name == frenzyValueStr][0]
+                if self.numericProsodyControls['minNumericValue'].GetValue() >= self.numericProsodyControls['maxNumericValue'].GetValue():
+                    gui.messageBox(_("Minimum numeric value must be strictly less than maximum numeric value."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                    self.numericProsodyControls['minNumericValue'].SetFocus()
+                    return
             else:
                 raise RuntimeError
             if frenzyValue in self.disallowedFrenzyValues:
@@ -420,6 +473,10 @@ class AudioRuleDialog(wx.Dialog):
                 passThrough=bool(self.passThroughCheckBox.GetValue()),
                 frenzyType=self.frenzyType,
                 frenzyValue=frenzyValue,
+                minNumericValue=self.numericProsodyControls['minNumericValue'].GetValue(),
+                maxNumericValue=self.numericProsodyControls['maxNumericValue'].GetValue(),
+                prosodyMinOffset=self.numericProsodyControls['prosodyMinOffset'].GetValue(),
+                prosodyMaxOffset=self.numericProsodyControls['prosodyMaxOffset'].GetValue(),
             )
             return result
         except Exception as e:

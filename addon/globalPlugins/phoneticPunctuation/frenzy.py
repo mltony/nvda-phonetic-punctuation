@@ -100,8 +100,10 @@ def monkeyUnpatch():
 
 roleRules = None
 stateRules = None
+formatRules = None
+numericFormatRules = None
 def updateRules():
-    global roleRules, stateRules
+    global roleRules, stateRules, formatRules, numericFormatRules
     roleRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.ROLE]
@@ -110,6 +112,15 @@ def updateRules():
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.STATE]
     }
+    formatRules = {
+        rule.getFrenzyValue(): rule
+        for rule in pp.rulesByFrenzy[FrenzyType.FORMAT]
+    }
+    numericFormatRules = {
+        rule.getFrenzyValue(): rule
+        for rule in pp.rulesByFrenzy[FrenzyType.NUMERIC_FORMAT]
+    }
+
 
 class FakeTextInfo:
     def __init__(self, info, formatConfig):
@@ -255,7 +266,7 @@ def new_getTextInfoSpeech(
         )
         return
     if True:
-        # Computing if - identical to logic in the original function
+        # Computing formatConfig - identical to logic in the original function
         extraDetail = unit in (textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD)
         if not formatConfig:
             formatConfig = config.conf["documentFormatting"]
@@ -265,32 +276,38 @@ def new_getTextInfoSpeech(
         # For performance reasons, when navigating by paragraph or table cell, spelling errors will not be announced.
         if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
             formatConfig["reportSpellingErrors"] = False
-    processHeadings = True
-    headingRule = pp.AudioRule(
-        comment='asdf',
-        pattern="",
-        ruleType=audioRuleProsody,
-        wavFile=None,
-        builtInWavFile=None,
-        startAdjustment=0,
-        endAdjustment=0,
-        tone=None,
-        duration=None,
-        enabled=True,
-        caseSensitive=True,
-        prosodyName="Pitch",
-        prosodyOffset=None,
-        prosodyMultiplier=None,
-        volume=100,
-        passThrough=False,
-        frenzyType=FrenzyType.NUMERIC_FORMAT.name,
-        frenzyValue=NumericTextFormat.HEADING_LEVEL,
-        minNumericValue=1,
-        maxNumericValue=6,
-        prosodyMinOffset=-30,
-        prosodyMaxOffset=30,
-        replacementPattern=None,
-    )
+    if False:
+        #Debug, delete when done
+        processHeadings = True
+        headingLevelRule = pp.AudioRule(
+            comment='asdf',
+            pattern="",
+            ruleType=audioRuleProsody,
+            wavFile=None,
+            builtInWavFile=None,
+            startAdjustment=0,
+            endAdjustment=0,
+            tone=None,
+            duration=None,
+            enabled=True,
+            caseSensitive=True,
+            prosodyName="Pitch",
+            prosodyOffset=None,
+            prosodyMultiplier=None,
+            volume=100,
+            passThrough=False,
+            frenzyType=FrenzyType.NUMERIC_FORMAT.name,
+            frenzyValue=NumericTextFormat.HEADING_LEVEL,
+            minNumericValue=1,
+            maxNumericValue=6,
+            prosodyMinOffset=-30,
+            prosodyMaxOffset=30,
+            replacementPattern=None,
+        )
+    headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
+    processHeadings = headingLevelRule is not None
+    #tones.beep(500, 50)
+    #api.s.append((processHeadings, headingLevelRule))
     fakeTextInfo  = FakeTextInfo(info, formatConfig)
     fields = fakeTextInfo.fields
     
@@ -325,7 +342,9 @@ def new_getTextInfoSpeech(
                 level = int(level)
             except ValueError:
                 continue
-            preCommand, postCommand = headingRule.getNumericSpeechCommand(level)
+            preCommand, postCommand = headingLevelRule.getNumericSpeechCommand(level)
+            #tones.beep(500, 50)
+            #api.s.append((preCommand, postCommand))
             if preCommand is not None:
                 newCommands[start].append(preCommand)
             if postCommand is not None:
@@ -333,11 +352,6 @@ def new_getTextInfoSpeech(
     # TODO: process font attributes here
     previousIndex = 0
     fakeTextInfo.setSkipSet(skipSet)
-    #tones.beep(500, 50)
-    s = []
-    api.s.append(s)
-    b = []
-    api.b.append(b)
     nFields = len(fields)
     intervalsAndCommands = []
     nIntervals = 0
@@ -392,4 +406,6 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
+    #tones.beep(500, 50)
+    #api.s.append(result[0])
     yield from result
