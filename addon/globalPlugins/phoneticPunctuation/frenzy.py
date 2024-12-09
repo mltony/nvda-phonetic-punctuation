@@ -242,6 +242,31 @@ def isBlankSequence(sequence):
                 return False
     return True
 
+def computeStackAtIndex(fields, index):
+    stack = []
+    for field in fields[:index]:
+        if isinstance(field,textInfos.FieldCommand):
+            if field.command == "controlStart":
+                stack.append(field)
+            elif field.command == "controlEnd":
+                del stack[-1]
+    return stack
+
+def computeCacheableStateAtEnd(fields):
+    stringFieldIndices = [i for i, field in enumerate(fields) if isinstance(field, str)]
+    if len(stringFieldIndices) == 0:
+        return {}
+    lastIndex = stringFieldIndices[-1]
+    stack = computeStackAtIndex(fields, lastIndex)
+    result = {}
+    for field in stack:
+        if field.field['role'] == controlTypes.Role.HEADING:
+            headingLevel = field.field.get('level', None)
+            if headingLevel is not None:
+                result['headingLevel'] = int(headingLevel)
+    
+    #log.warn(f"asdf {lastIndex=} {result=}")
+    return result
 
 original_getTextInfoSpeech = None
 api.s = []
@@ -310,8 +335,6 @@ def new_getTextInfoSpeech(
         )
     headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
     processHeadings = headingLevelRule is not None
-    #tones.beep(500, 50)
-    #api.s.append((processHeadings, headingLevelRule))
     fakeTextInfo  = FakeTextInfo(info, formatConfig)
     fields = fakeTextInfo.fields
     
@@ -320,6 +343,10 @@ def new_getTextInfoSpeech(
     # They also serve as boundaries for other font attribute processing as typically text formatting changes when we enter/exit a heading.
     skipSet = set()
     newCommands = collections.defaultdict(lambda: [])
+    try:
+        cache = info.obj.ppCache
+    except AttributeError:
+        cache = {}
     if processHeadings:
         headingStarts = list(findAllHeadings(fields))
         headingEnds = [findControlEnd(fields, headingSstart) for headingSstart in headingStarts]
@@ -340,20 +367,35 @@ def new_getTextInfoSpeech(
                 return
         skipSet.update(headingStarts)
         skipSet.update(headingEnds)
-        for start, end in zip(headingStarts, headingEnds):
-            level = fields[start].field.get('level', 1)
+        for i, (start, end) in enumerate(zip(headingStarts, headingEnds)):
+            level = fields[start].field.get('level', None)
             try:
                 level = int(level)
-            except ValueError:
+            except (ValueError, TypeError):
                 continue
             preCommand, postCommand = headingLevelRule.getNumericSpeechCommand(level)
-            #tones.beep(500, 50)
-            #api.s.append((preCommand, postCommand))
+            if isinstance(preCommand, speech.commands.BaseProsodyCommand):
+                pass
+            elif isinstance(preCommand, str):
+                if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
+                    # Compare with cached heading level - we don't want to repeat heading level on every char or word move
+                    tones.beep(500, 50)
+                    if cache.get('headingLevel', None) == level:
+                        
+                        continue
+                elif reason == OutputReason.QUICKNAV:
+                    # During quickNav speak Heading level at the end.
+                    preCommand, postCommand = postCommand, preCommand
+            else:
+                raise RuntimeError
             if preCommand is not None:
                 newCommands[start].append(preCommand)
             if postCommand is not None:
                 newCommands[end].append(postCommand)
     # TODO: process font attributes here
+    newCache = computeCacheableStateAtEnd(fields)    
+    info.obj.ppCache = newCache
+    
     previousIndex = 0
     fakeTextInfo.setSkipSet(skipSet)
     nFields = len(fields)
@@ -413,3 +455,4 @@ def new_getTextInfoSpeech(
     #tones.beep(500, 50)
     #api.s.append(result[0])
     yield from result
+
