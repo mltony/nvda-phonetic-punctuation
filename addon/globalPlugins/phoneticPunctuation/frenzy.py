@@ -164,10 +164,20 @@ class FakeTextInfo:
                     elif field.command == "controlEnd":
                         del result[-1]
             else:
-                result.append(field)
+                # If we are just closing the previous controlStart without any content - drop that controlStart instead
+                if (
+                    len(result) > 0
+                    and isinstance(result[-1], textInfos.FieldCommand)
+                    and isinstance(field,textInfos.FieldCommand)
+                    and result[-1].command == "controlStart"
+                    and field.command == "controlEnd"
+                ):
+                    del result[-1]
+                else:
+                    result.append(field)
         result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
         return result
-
+    
     def getControlFieldSpeech(
             self,
             attrs,
@@ -234,6 +244,16 @@ def findAllHeadings(fields):
                         yield i
                 except KeyError:
                     pass
+
+def findAllFormatFieldBrackets(fields):
+    currentStartIndex = None
+    for i, field in enumerate(fields):
+        if isinstance(field,textInfos.FieldCommand):
+            if currentStartIndex is not None:
+                yield (currentStartIndex, i)
+                currentStartIndex = None
+            if field.command == "formatChange":
+                currentStartIndex = i
 
 def isBlankSequence(sequence):
     for grouping  in sequence:
@@ -305,36 +325,10 @@ def new_getTextInfoSpeech(
         # For performance reasons, when navigating by paragraph or table cell, spelling errors will not be announced.
         if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
             formatConfig["reportSpellingErrors"] = False
-    if False:
-        #Debug, delete when done
-        processHeadings = True
-        headingLevelRule = pp.AudioRule(
-            comment='asdf',
-            pattern="",
-            ruleType=audioRuleProsody,
-            wavFile=None,
-            builtInWavFile=None,
-            startAdjustment=0,
-            endAdjustment=0,
-            tone=None,
-            duration=None,
-            enabled=True,
-            caseSensitive=True,
-            prosodyName="Pitch",
-            prosodyOffset=None,
-            prosodyMultiplier=None,
-            volume=100,
-            passThrough=False,
-            frenzyType=FrenzyType.NUMERIC_FORMAT.name,
-            frenzyValue=NumericTextFormat.HEADING_LEVEL,
-            minNumericValue=1,
-            maxNumericValue=6,
-            prosodyMinOffset=-30,
-            prosodyMaxOffset=30,
-            replacementPattern=None,
-        )
     headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
+    fontSizeRule = numericFormatRules.get(NumericTextFormat.FONT_SIZE, None)
     processHeadings = headingLevelRule is not None
+    firstHeadingCommand = None
     fakeTextInfo  = FakeTextInfo(info, formatConfig)
     fields = fakeTextInfo.fields
     
@@ -347,6 +341,11 @@ def new_getTextInfoSpeech(
         cache = info.obj.ppCache
     except AttributeError:
         cache = {}
+    newCache = {}
+    try:
+        newCache['fontSize'] = cache['fontSize']
+    except KeyError:
+        pass
     if processHeadings:
         headingStarts = list(findAllHeadings(fields))
         headingEnds = [findControlEnd(fields, headingSstart) for headingSstart in headingStarts]
@@ -379,9 +378,7 @@ def new_getTextInfoSpeech(
             elif isinstance(preCommand, str):
                 if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
                     # Compare with cached heading level - we don't want to repeat heading level on every char or word move
-                    tones.beep(500, 50)
                     if cache.get('headingLevel', None) == level:
-                        
                         continue
                 elif reason == OutputReason.QUICKNAV:
                     # During quickNav speak Heading level at the end.
@@ -389,11 +386,46 @@ def new_getTextInfoSpeech(
             else:
                 raise RuntimeError
             if preCommand is not None:
+                if firstHeadingCommand is None:
+                    firstHeadingCommand = preCommand
                 newCommands[start].append(preCommand)
             if postCommand is not None:
                 newCommands[end].append(postCommand)
-    # TODO: process font attributes here
-    newCache = computeCacheableStateAtEnd(fields)    
+    if fontSizeRule is not None:
+        samplePreCommand, samplePostCommand = fontSizeRule.getNumericSpeechCommand(10)
+        # If configured to report heading levels and font size via same prosody  command, then skip headings to avoid interference
+        skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingCommand)
+        for begin, end in findAllFormatFieldBrackets(fields):
+            if skipHeadingsForFontSize and any(headingStart < begin < headingEnd for headingStart, headingEnd in zip(headingStarts, headingEnds)):
+                continue
+            try:
+                fontSizeStr = fields[begin].field['font-size']
+                fontSizeStr =re.sub(" ?pt$", "", fontSizeStr)
+                fontSize = float(fontSizeStr)
+            except (KeyError, ValueError):
+                try:
+                    del newCache['fontSize']
+                except KeyError:
+                    pass
+                continue
+            prevFontSize = newCache.get('fontSize', None)
+            newCache['fontSize'] = fontSize
+            preCommand, postCommand = fontSizeRule.getNumericSpeechCommand(fontSize)
+            if isinstance(preCommand, speech.commands.BaseProsodyCommand):
+                pass
+            elif isinstance(preCommand, str):
+                if True:
+                    # Compare with cached font size
+                    if prevFontSize == fontSize:
+                        continue
+            else:
+                raise RuntimeError
+            if preCommand is not None:
+                newCommands[begin].append(preCommand)
+            if postCommand is not None:
+                newCommands[end].append(postCommand)
+
+    newCache.update(computeCacheableStateAtEnd(fields))
     info.obj.ppCache = newCache
     
     previousIndex = 0
@@ -437,6 +469,10 @@ def new_getTextInfoSpeech(
             # Interval
             i, j = item
             fakeTextInfo.setStartAndEnd(i, j)
+            api.ij = i,j
+            log.warn(f"asdf ij={i},{j}")
+            api.f = fakeTextInfo
+            api.s.append(fakeTextInfo)
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -452,7 +488,5 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
-    #tones.beep(500, 50)
-    #api.s.append(result[0])
     yield from result
 
