@@ -127,9 +127,10 @@ def updateRules():
 
 
 class FakeTextInfo:
-    def __init__(self, info, formatConfig):
+    def __init__(self, info, formatConfig, preventSpellingCharacters):
         self.info = info
         self.formatConfig = formatConfig
+        self.preventSpellingCharacters = preventSpellingCharacters
         self.fields = info.getTextWithFields(formatConfig)
     
     def setSkipSet(self, skipSet):
@@ -174,6 +175,9 @@ class FakeTextInfo:
                 ):
                     del result[-1]
                 else:
+                    if self.preventSpellingCharacters and isinstance(field, str):
+                        # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
+                        field = field + '\n'
                     result.append(field)
         result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
         return result
@@ -301,6 +305,9 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
+    if info.text == ' ':
+        #tones.beep(500, 50)
+        pass
     if not isPhoneticPunctuationEnabled():
         yield from original_getTextInfoSpeech(
             info,
@@ -328,7 +335,7 @@ def new_getTextInfoSpeech(
     fontSizeRule = numericFormatRules.get(NumericTextFormat.FONT_SIZE, None)
     processHeadings = headingLevelRule is not None
     firstHeadingCommand = None
-    fakeTextInfo  = FakeTextInfo(info, formatConfig)
+    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
     fields = fakeTextInfo.fields
     
     #skip set contains indices where heading controls start and end.
@@ -451,6 +458,7 @@ def new_getTextInfoSpeech(
     # Filtering out empty intervals. However, if all intervals are empty, we would like to keep the first one.
     for i, interval in enumerate(intervalsAndCommands):
         if isinstance(interval, list):
+            # injected commands - always keep them
             filteredIntervalsAndCommands.append(interval)
         elif isinstance(interval, tuple):
             isEmpty = i in emptyIntervals
@@ -460,7 +468,13 @@ def new_getTextInfoSpeech(
         else:
             raise RuntimeError
     result = []
-    for item in filteredIntervalsAndCommands:
+    # Even though we have already filtered out empty intervals (e.g. intervals containingg no string to speak),
+    # Some of the intervals might still be blank, e.g., if an interval only contains a single whitespace character,
+    # NVDA would speak it as blank".
+    # We would like to avoid that, so we will suppress blanks on all intervals except for the last one if all previous are blank.
+    lastIntervalIndex = [i for i, interval in enumerate(filteredIntervalsAndCommands) if isinstance(interval, tuple)][-1]
+    isBlankSoFar = True
+    for i, item in enumerate(filteredIntervalsAndCommands):
         if isinstance(item, list):
             # Injected commands
             result.append(item)
@@ -468,9 +482,6 @@ def new_getTextInfoSpeech(
             # Interval
             i, j = item
             fakeTextInfo.setStartAndEnd(i, j)
-            api.ij = i,j
-            api.f = fakeTextInfo
-            api.s.append(fakeTextInfo)
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -479,9 +490,11 @@ def new_getTextInfoSpeech(
                 reason ,
                 _prefixSpeechCommand,
                 onlyInitialFields,
-                suppressBlanks=suppressBlanks,
+                suppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks,
             ))
-            #yield from sequence
+            isBlank = isBlankSequence(sequence)
+            if not isBlank:
+                isBlankSoFar = False
             result.extend(sequence)
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
