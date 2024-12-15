@@ -49,6 +49,8 @@ from .utils import *
 from .commands import *
 from . import phoneticPunctuation as pp
 from controlTypes import OutputReason
+from config.configFlags import ReportLineIndentation
+
 original_getObjectPropertiesSpeech = None
 
 def new_getObjectPropertiesSpeech(
@@ -129,7 +131,7 @@ def updateRules():
 class FakeTextInfo:
     def __init__(self, info, formatConfig, preventSpellingCharacters):
         self.info = info
-        self.formatConfig = formatConfig
+        self.formatConfig = formatConfig.copy()
         self.preventSpellingCharacters = preventSpellingCharacters
         self.fields = info.getTextWithFields(formatConfig)
     
@@ -140,6 +142,12 @@ class FakeTextInfo:
         self.start, self.end = start, end
 
     def getTextWithFields(self, formatConfig= None):
+        # We tweak indentation reporting, so it's ok that indentation reporting field value is different.
+        # However for sanity check we would like to ensure that all the other fields are identical.
+        try:
+            self.formatConfig["reportLineIndentation"] = formatConfig["reportLineIndentation"]
+        except KeyError:
+            pass
         if formatConfig != self.formatConfig:
             raise ValueError
         stack = []
@@ -305,9 +313,6 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
-    if info.text == ' ':
-        #tones.beep(500, 50)
-        pass
     if not isPhoneticPunctuationEnabled():
         yield from original_getTextInfoSpeech(
             info,
@@ -496,6 +501,9 @@ def new_getTextInfoSpeech(
             if not isBlank:
                 isBlankSoFar = False
             result.extend(sequence)
+            # Whatever is the original value of indentation reporting,
+            # we should only report it for the first interval and turn off for all the rest.
+            formatConfig["reportLineIndentation"] = ReportLineIndentation.OFF
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
