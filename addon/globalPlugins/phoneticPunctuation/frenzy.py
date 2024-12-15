@@ -285,7 +285,6 @@ def computeCacheableStateAtEnd(fields):
             if headingLevel is not None:
                 result['headingLevel'] = int(headingLevel)
     
-    #log.warn(f"asdf {lastIndex=} {result=}")
     return result
 
 original_getTextInfoSpeech = None
@@ -470,7 +469,6 @@ def new_getTextInfoSpeech(
             i, j = item
             fakeTextInfo.setStartAndEnd(i, j)
             api.ij = i,j
-            log.warn(f"asdf ij={i},{j}")
             api.f = fakeTextInfo
             api.s.append(fakeTextInfo)
             sequence = list(original_getTextInfoSpeech(
@@ -489,4 +487,3 @@ def new_getTextInfoSpeech(
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
     yield from result
-
