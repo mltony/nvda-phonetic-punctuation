@@ -201,10 +201,6 @@ class AudioRuleDialog(wx.Dialog):
         prosodyOffsetLabelText = _("Prosody offset:")
         self.prosodyOffsetTextCtrl=sHelper.addLabeledControl(prosodyOffsetLabelText, wx.TextCtrl)
         self.typeControls[audioRuleProsody].append(self.prosodyOffsetTextCtrl)
-      # Translators: label for prosody multiplier
-        prosodyMultiplierLabelText = _("Prosody multiplier:")
-        self.prosodyMultiplierTextCtrl=sHelper.addLabeledControl(prosodyMultiplierLabelText, wx.TextCtrl)
-        self.typeControls[audioRuleProsody].append(self.prosodyMultiplierTextCtrl)
       # Numeric prosody edit boxes
         numericProsodyControlsData = dict(
             minNumericValue=dict(
@@ -318,7 +314,6 @@ class AudioRuleDialog(wx.Dialog):
             prosodyCategoryIndex = 0
         self.prosodyNameCategory.control.SetSelection(prosodyCategoryIndex)
         self.prosodyOffsetTextCtrl.SetValue(str(rule.prosodyOffset or ""))
-        self.prosodyMultiplierTextCtrl.SetValue(str(rule.prosodyMultiplier or ""))
         #self.caseSensitiveCheckBox.SetValue(rule.caseSensitive)
         self.passThroughCheckBox.SetValue(rule.passThrough)
         for name, control in self.numericProsodyControls.items():
@@ -451,27 +446,8 @@ class AudioRuleDialog(wx.Dialog):
                 gui.messageBox(_("prosody offset must be an integer between -100 and 100"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.prosodyOffsetTextCtrl.SetFocus()
                 return
-            good = False
-            try:
-                if len(self.prosodyMultiplierTextCtrl.GetValue()) == 0:
-                    prosodyMultiplier = None
-                    good = True
-                else:
-                    prosodyMultiplier = float(self.prosodyMultiplierTextCtrl.GetValue())
-                    if .1 <= prosodyMultiplier <= 10:
-                        good = True
-            except ValueError:
-                pass
-            if not good:
-                gui.messageBox(_("prosody multiplier must be a float between 0.1 and 10"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
-                self.prosodyMultiplierTextCtrl.SetFocus()
-                return
-            if prosodyOffset is not None and prosodyMultiplier is not None:
-                gui.messageBox(_("You must specify either prosody offset or multiplier but not both"), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
-                self.prosodyOffsetTextCtrl.SetFocus()
-                return
-            if prosodyOffset is  None and prosodyMultiplier is  None:
-                gui.messageBox(_("You must specify either prosody offset or multiplier."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+            if prosodyOffset is  None:
+                gui.messageBox(_("You must specify prosody offset."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.prosodyOffsetTextCtrl.SetFocus()
                 return
             if prosodyOffset == 0:
@@ -479,7 +455,6 @@ class AudioRuleDialog(wx.Dialog):
                 self.prosodyOffsetTextCtrl.SetFocus()
                 return
             mylog(f"prosodyOffset={prosodyOffset}")
-            mylog(f"prosodyMultiplier={prosodyMultiplier}")
 
         try:
             result = AudioRule(
@@ -495,7 +470,7 @@ class AudioRuleDialog(wx.Dialog):
                 enabled=bool(self.enabledCheckBox.GetValue()),
                 prosodyName=self.PROSODY_LABELS[self.prosodyNameCategory.control.GetSelection()],
                 prosodyOffset=prosodyOffset,
-                prosodyMultiplier=prosodyMultiplier,
+                prosodyMultiplier=None,
                 volume=self.volumeSlider.Value or 100,
                 passThrough=bool(self.passThroughCheckBox.GetValue()),
                 frenzyType=self.frenzyType,
