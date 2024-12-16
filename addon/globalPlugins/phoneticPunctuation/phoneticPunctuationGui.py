@@ -607,7 +607,7 @@ class RulesDialog(SettingsPanel):
     title = _("Phonetic Punctuation  rules")
 
     def makeSettings(self, settingsSizer):
-        rulesDialogOpen = True
+        common.rulesDialogOpen = True
         pp.reloadRules()
         self.allRules = [rule for frenzyType, rules in pp.rulesByFrenzy.items() for rule in rules]
         self.frenzyRules = []
