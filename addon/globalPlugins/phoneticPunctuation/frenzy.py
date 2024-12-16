@@ -95,10 +95,12 @@ def monkeyPatch():
     global original_getTextInfoSpeech
     original_getTextInfoSpeech = speech.speech.getTextInfoSpeech
     speech.speech.getTextInfoSpeech = new_getTextInfoSpeech
+    speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
 
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
     speech.speech.getTextInfoSpeech = original_getTextInfoSpeech
+    speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
 
 roleRules = None
 stateRules = None
