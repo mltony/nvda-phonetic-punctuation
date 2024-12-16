@@ -677,6 +677,8 @@ def injectMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize, originalProcessSpeechSymbols
     originalSpeechSpeechSpeak = speech.speech.speak
     speech.speech.speak = preSpeak
+    speech.speak = speech.speech.speak
+    speech.sayAll.SayAllHandler.speechWithoutPausesInstance.speak = speech.speech.speak
     originalSpeechCancel = speech.speech.cancelSpeech
     speech.speech.cancelSpeech = preCancelSpeech
     speech.cancelSpeech = speech.speech.cancelSpeech
@@ -689,6 +691,8 @@ def injectMonkeyPatches():
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
     speech.speech.speak = originalSpeechSpeechSpeak
+    speech.speak = speech.speech.speak
+    speech.sayAll.SayAllHandler.speechWithoutPausesInstance.speak = speech.speech.speak
     speech.speech.cancelSpeech = originalSpeechCancel
     speech.cancelSpeech = speech.speech.cancelSpeech
     characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
