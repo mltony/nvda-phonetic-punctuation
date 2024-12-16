@@ -494,6 +494,8 @@ class AudioRule:
             className = className[0].upper() + className[1:] + 'Command'
             classClass = getattr(speech.commands, className)
             if self.prosodyOffset is not None:
+                # We shouldn't set offset to zero because it means restore defaults and confuses our nested prosody commands algorithm.
+                offset = self.prosodyOffset or 0.001
                 preCommand = classClass(offset=self.prosodyOffset)
             else:
                 preCommand = classClass(multiplier=self.prosodyMultiplier)
@@ -517,7 +519,7 @@ class AudioRule:
             ):
                 raise ValueError
             numericValue = max(self.minNumericValue, min(self.maxNumericValue, numericValue))
-            offset = self.prosodyMinOffset + (self.prosodyMaxOffset - self.prosodyMinOffset) * (numericValue - self.minNumericValue) / (self.maxNumericValue - self.minNumericValue)
+            offset = self.prosodyMinOffset + (self.prosodyMaxOffset - self.prosodyMinOffset) * (numericValue - self.minNumericValue) / (self.maxNumericValue - self.minNumericValue) or 0.001
             preCommand = classClass(offset=offset)
             postCommand = classClass()
             return preCommand, postCommand
@@ -723,6 +725,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
             newSequence.extend(values)
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
     newSequence = unmaskMaskedStrings(newSequence)
+    newSequence = fixProsodyCommands(newSequence)
     return newSequence
 
 def eloquenceFix(speechSequence, language, symbolLevel):
@@ -755,3 +758,42 @@ def unmaskMaskedStrings(sequence):
             result.append(item)
     return result
 
+def fixProsodyCommands(sequence):
+    """
+    Prosody commands in NVDA don't support nesting natively.
+    E.g., if you increase pitch by 10, and then increase pitch by 10 again, these numbers don't add up.
+    The latter pitch command will simply override the former one.
+    That is not desired behavior; we would like pitch offsets to be additive.
+    We can't deal with multiplicative  prosody commands, so we just don't support them here.
+    Adjusting prosody offsets in this function so that they support nesting.
+    """
+    prosodyStacks = collections.defaultdict(lambda: [])
+    prosodyOffsets = collections.defaultdict(lambda: 0)
+    result = []
+    for i, command in enumerate(sequence):
+        if isinstance(command, speech.commands.BaseProsodyCommand):
+            cls = type(command)
+            if command._multiplier != 1:
+                log.error("Multiplicative prosody commands detected. This is not supported by phonetic punctuation add-on.")
+                return sequence
+            commandOffset = command._offset
+            if commandOffset == 0:
+                # stack pop
+                if len(prosodyStacks[cls]) == 0:
+                    log.error("Stack underflow during fixProsodyCommands in phonetic punctuation add-on.")
+                    return sequence
+                prosodyOffsets[cls] = prosodyStacks[cls][-1]
+                del prosodyStacks[cls][-1]
+            else:
+                prosodyStacks[cls].append(prosodyOffsets[cls])
+                prosodyOffsets[cls] += commandOffset
+            command = copy.deepcopy(command)
+            command._offset = prosodyOffsets[cls]
+            command.isDefault = command._offset == 0
+        result.append(command)
+    for cls, stack in prosodyStacks.items():
+        if len(stack) != 0:
+            # This is not supposed to happen really.
+            # But we undo any prosody command that has not been properly closed.
+            result.append(cls(offset=0))
+    return result

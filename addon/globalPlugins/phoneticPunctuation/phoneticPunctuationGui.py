@@ -296,6 +296,8 @@ class AudioRuleDialog(wx.Dialog):
             idx = list(TextFormat).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.NUMERIC_FORMAT:
             idx = list(NumericTextFormat).index(rule.getFrenzyValue())
+        elif self.frenzyType        == FrenzyType.TEXT:
+            pass
         else:
             raise ValueError
         if idx is not None:
@@ -470,6 +472,10 @@ class AudioRuleDialog(wx.Dialog):
                 return
             if prosodyOffset is  None and prosodyMultiplier is  None:
                 gui.messageBox(_("You must specify either prosody offset or multiplier."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.prosodyOffsetTextCtrl.SetFocus()
+                return
+            if prosodyOffset == 0:
+                gui.messageBox(_("Prosody offset cannot be zero."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                 self.prosodyOffsetTextCtrl.SetFocus()
                 return
             mylog(f"prosodyOffset={prosodyOffset}")
