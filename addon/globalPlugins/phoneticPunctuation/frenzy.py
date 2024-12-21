@@ -363,23 +363,20 @@ def new_getTextInfoSpeech(
         headingStarts = list(findAllHeadings(fields))
         headingEnds = [findControlEnd(fields, headingSstart) for headingSstart in headingStarts]
         nHeadings = len(headingStarts)
-        for i in range(nHeadings - 1):
-            if headingStarts[i + 1] < headingEnds[i]:
-                log.error("Nested headings detected. Earcons add-on doesn't support that yet.")
-                yield from original_getTextInfoSpeech(
-                    info,
-                    useCache ,
-                    formatConfig,
-                    unit ,
-                    reason ,
-                    _prefixSpeechCommand,
-                    onlyInitialFields,
-                    suppressBlanks,
-                )
-                return
+        # Filter out nested headings.
+        # Nested headings happen on very few web pages and typically are not meaningful.
+        # In theory we can handle nested headings properly, but this greatly overcomplicates the code with only marginal return.
+        lastHeadingEnd = -1
+        nestedHeadingIndices = set()
+        for i in range(nHeadings):
+            if headingStarts[i] < lastHeadingEnd:
+                nestedHeadingIndices.add(i)
+            lastHeadingEnd = headingEnds[i]
         skipSet.update(headingStarts)
         skipSet.update(headingEnds)
         for i, (start, end) in enumerate(zip(headingStarts, headingEnds)):
+            if i in nestedHeadingIndices:
+                continue
             level = fields[start].field.get('level', None)
             try:
                 level = int(level)
