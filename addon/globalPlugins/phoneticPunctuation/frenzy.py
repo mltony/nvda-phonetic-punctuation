@@ -95,12 +95,12 @@ def monkeyPatch():
     global original_getTextInfoSpeech
     original_getTextInfoSpeech = speech.speech.getTextInfoSpeech
     speech.speech.getTextInfoSpeech = new_getTextInfoSpeech
-    speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    #speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
 
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
     speech.speech.getTextInfoSpeech = original_getTextInfoSpeech
-    speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    #speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
 
 roleRules = None
 stateRules = None
@@ -408,7 +408,9 @@ def new_getTextInfoSpeech(
         samplePreCommand, samplePostCommand = fontSizeRule.getNumericSpeechCommand(10)
         # If configured to report heading levels and font size via same prosody  command, then skip headings to avoid interference
         skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingCommand)
+        dbg = []
         for begin, end in findAllFormatFieldBrackets(fields):
+            dbg.append((begin,end))
             if skipHeadingsForFontSize and any(headingStart < begin < headingEnd for headingStart, headingEnd in zip(headingStarts, headingEnds)):
                 continue
             try:
@@ -509,4 +511,5 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
+    api.s.append((info.text, dbg, newCommands, result))
     yield from result

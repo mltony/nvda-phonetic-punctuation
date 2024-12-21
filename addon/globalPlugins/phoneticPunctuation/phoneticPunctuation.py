@@ -599,8 +599,9 @@ originalSpeechCancel = None
 originalProcessSpeechSymbols = None
 originalTonesInitialize = None
 
-
+api.ps = []
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
+    api.ps.append(speechSequence)
     if isPhoneticPunctuationEnabled():
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
