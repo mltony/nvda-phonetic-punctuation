@@ -96,11 +96,25 @@ def monkeyPatch():
     original_getTextInfoSpeech = speech.speech.getTextInfoSpeech
     speech.speech.getTextInfoSpeech = new_getTextInfoSpeech
     #speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    
+    global original_getPropertiesSpeech, original_getControlFieldSpeech
+    original_getPropertiesSpeech = speech.speech.getPropertiesSpeech
+    speech.speech.getPropertiesSpeech = new_getPropertiesSpeech
+    original_getControlFieldSpeech = speech.speech.getControlFieldSpeech
+    speech.speech.getControlFieldSpeech = new_getControlFieldSpeech
+    speech.getPropertiesSpeech = speech.speech.getPropertiesSpeech
+    speech.getControlFieldSpeech = speech.speech.getControlFieldSpeech
 
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
     speech.speech.getTextInfoSpeech = original_getTextInfoSpeech
     #speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    speech.speech.getPropertiesSpeech = original_getPropertiesSpeech
+    speech.speech.getControlFieldSpeech = original_getControlFieldSpeech
+    
+    speech.getPropertiesSpeech = speech.speech.getPropertiesSpeech
+    speech.getControlFieldSpeech = speech.speech.getControlFieldSpeech
+
 
 roleRules = None
 stateRules = None
@@ -188,6 +202,12 @@ class FakeTextInfo:
                     if self.preventSpellingCharacters and isinstance(field, str):
                         # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
                         field = field + '\n'
+                    if isinstance(field,textInfos.FieldCommand):
+                        if field.command == "controlStart":
+                            if field.field['role'] == controlTypes.Role.EDITABLETEXT:
+                                #field.field['role'] = controlTypes.Role.UNKNOWN
+                                pass
+                                
                     result.append(field)
         result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
         return result
@@ -304,6 +324,7 @@ def computeCacheableStateAtEnd(fields):
 original_getTextInfoSpeech = None
 api.s = []
 api.b = []
+globalDbg = False
 
 def new_getTextInfoSpeech(
         info,
@@ -405,9 +426,7 @@ def new_getTextInfoSpeech(
         samplePreCommand, samplePostCommand = fontSizeRule.getNumericSpeechCommand(10)
         # If configured to report heading levels and font size via same prosody  command, then skip headings to avoid interference
         skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingCommand)
-        dbg = []
         for begin, end in findAllFormatFieldBrackets(fields):
-            dbg.append((begin,end))
             if skipHeadingsForFontSize and any(headingStart < begin < headingEnd for headingStart, headingEnd in zip(headingStarts, headingEnds)):
                 continue
             try:
@@ -480,6 +499,7 @@ def new_getTextInfoSpeech(
     # We would like to avoid that, so we will suppress blanks on all intervals except for the last one if all previous are blank.
     lastIntervalIndex = [i for i, interval in enumerate(filteredIntervalsAndCommands) if isinstance(interval, tuple)][-1]
     isBlankSoFar = True
+
     for i, item in enumerate(filteredIntervalsAndCommands):
         if isinstance(item, list):
             # Injected commands
@@ -508,5 +528,52 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
-    api.s.append((info.text, dbg, newCommands, result))
     yield from result
+
+# some random funny Unicode characters
+PROPERTY_SPEECH_SIGNATURE = "🪛🪕🚛"
+original_getPropertiesSpeech = None
+def new_getPropertiesSpeech(
+    reason: OutputReason = OutputReason.QUERY,
+    **propertyValues,
+):
+    if globalDbg:
+        api.s.append(propertyValues)
+    role = propertyValues.get('role', None)
+    if role in roleRules and roleRules[role].enabled:
+        return [f"{PROPERTY_SPEECH_SIGNATURE}{role.name}{PROPERTY_SPEECH_SIGNATURE}"]
+    return original_getPropertiesSpeech(reason, **propertyValues)
+
+PROPERTY_SPEECH_PATTERN = re.compile(f"{PROPERTY_SPEECH_SIGNATURE}(\w+){PROPERTY_SPEECH_SIGNATURE}")
+original_getControlFieldSpeech = None
+def new_getControlFieldSpeech(  # noqa: C901
+    attrs,
+    ancestorAttrs,
+    fieldType,
+    formatConfig=None,
+    extraDetail = False,
+    reason = None,
+):
+    result = original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
+    if 'editable' in str(result):
+        global globalDbg
+        api.s.append(result)
+        globalDbg = True
+        original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
+        globalDbg = False
+        
+    for i, utterance in enumerate(result):
+        if m := PROPERTY_SPEECH_PATTERN.match(utterance):
+            # Replacing role speech with earcon
+            role = getattr(controlTypes.Role, m.group(1))
+            rule = roleRules[role]
+            command = rule.getSpeechCommand()[0]
+            result[i] = command
+        elif m := PROPERTY_SPEECH_PATTERN.search(utterance):
+            # We have the string, but there are also some other extra characters present.
+            # We assume this says something like "Out of frame" - that is we are exiting a container.
+            # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
+            # TBD Playing earcon for exiting container
+            tones.beep(1000, 200)
+            result[i] = "hahahaha"
+    return result
