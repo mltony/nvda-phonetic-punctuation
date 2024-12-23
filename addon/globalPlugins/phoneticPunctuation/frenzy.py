@@ -532,19 +532,31 @@ def new_getTextInfoSpeech(
 
 # some random funny Unicode characters
 PROPERTY_SPEECH_SIGNATURE = "🪛🪕🚛"
+PROPERTY_SPEECH_SIGNATURE2 = "🪼‣⁋"
 original_getPropertiesSpeech = None
 def new_getPropertiesSpeech(
     reason: OutputReason = OutputReason.QUERY,
     **propertyValues,
 ):
-    if globalDbg:
-        api.s.append(propertyValues)
+    if not isPhoneticPunctuationEnabled():
+        return original_getPropertiesSpeech(reason, **propertyValues)
+
     role = propertyValues.get('role', None)
     if role in roleRules and roleRules[role].enabled:
         return [f"{PROPERTY_SPEECH_SIGNATURE}{role.name}{PROPERTY_SPEECH_SIGNATURE}"]
-    return original_getPropertiesSpeech(reason, **propertyValues)
+    result =  original_getPropertiesSpeech(reason, **propertyValues)
+    if globalDbg:
+        #api.s.append(propertyValues)
+        api.s.append(result[:])
+    if 'role' in propertyValues and len(propertyValues) == 1:
+        # Only role text is requested. We need to mark it with signature, so that later we can tell whether we're jumping out of container.
+        # We will strip off the signature downstream.
+        if len(result) == 1:
+            result = [f"{PROPERTY_SPEECH_SIGNATURE2}{result[0]}{PROPERTY_SPEECH_SIGNATURE2}"]
+    return result
 
 PROPERTY_SPEECH_PATTERN = re.compile(f"{PROPERTY_SPEECH_SIGNATURE}(\w+){PROPERTY_SPEECH_SIGNATURE}")
+PROPERTY_SPEECH_PATTERN2 = re.compile(f"{PROPERTY_SPEECH_SIGNATURE2}(.+){PROPERTY_SPEECH_SIGNATURE2}")
 original_getControlFieldSpeech = None
 def new_getControlFieldSpeech(  # noqa: C901
     attrs,
@@ -555,6 +567,8 @@ def new_getControlFieldSpeech(  # noqa: C901
     reason = None,
 ):
     result = original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
+    if not isPhoneticPunctuationEnabled():
+        return result
     if 'editable' in str(result):
         global globalDbg
         api.s.append(result)
@@ -576,4 +590,15 @@ def new_getControlFieldSpeech(  # noqa: C901
             # TBD Playing earcon for exiting container
             tones.beep(1000, 200)
             result[i] = "hahahaha"
+        elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
+            # Just strip off the signature - this is just a role utterance
+            result[i] = m.group(1)
+        elif m := PROPERTY_SPEECH_PATTERN2.search(utterance):
+            # We have the string, but there are also some other extra characters present.
+            # We assume this says something like "Out of frame" - that is we are exiting a container.
+            # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
+            # TBD Playing earcon for exiting container
+            tones.beep(1000, 200)
+            result[i] = "hahahaha"
+
     return result
