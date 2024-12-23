@@ -120,8 +120,9 @@ roleRules = None
 stateRules = None
 formatRules = None
 numericFormatRules = None
+otherRules = None
 def updateRules():
-    global roleRules, stateRules, formatRules, numericFormatRules
+    global roleRules, stateRules, formatRules, numericFormatRules, otherRules
     roleRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.ROLE]
@@ -140,6 +141,11 @@ def updateRules():
     numericFormatRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.NUMERIC_FORMAT]
+        if rule.enabled
+    }
+    otherRules = {
+        rule.getFrenzyValue(): rule
+        for rule in pp.rulesByFrenzy[FrenzyType.OTHER_RULE]
         if rule.enabled
     }
 
@@ -575,7 +581,7 @@ def new_getControlFieldSpeech(
         globalDbg = True
         original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
         globalDbg = False
-        
+    result2 = []
     for i, utterance in enumerate(result):
         if isinstance(utterance, str):
             if m := PROPERTY_SPEECH_PATTERN.match(utterance):
@@ -583,23 +589,42 @@ def new_getControlFieldSpeech(
                 role = getattr(controlTypes.Role, m.group(1))
                 rule = roleRules[role]
                 command = rule.getSpeechCommand()[0]
-                result[i] = command
+                result2.append(command)
+                continue
+            elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
+                # Just strip off the signature - this is just a role utterance
+                result2.append(m.group(1))
+                continue
             elif m := PROPERTY_SPEECH_PATTERN.search(utterance):
                 # We have the string, but there are also some other extra characters present.
                 # We assume this says something like "Out of frame" - that is we are exiting a container.
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-                # TBD Playing earcon for exiting container
-                tones.beep(1000, 200)
                 result[i] = "hahahaha"
-            elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
-                # Just strip off the signature - this is just a role utterance
-                result[i] = m.group(1)
+                oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
+                if oocRule is not None:
+                    command = oocRule.getSpeechCommand()[0]
+                    result2.append(command)
+                    continue
+                else:
+                    role = getattr(controlTypes.Role, m.group(1))
+                    rule = roleRules[role]
+                    command = rule.getSpeechCommand()[0]
+                    result2.append(_("out of"))
+                    result2.append(command)
+                    continue
             elif m := PROPERTY_SPEECH_PATTERN2.search(utterance):
                 # We have the string, but there are also some other extra characters present.
                 # We assume this says something like "Out of frame" - that is we are exiting a container.
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-                # TBD Playing earcon for exiting container
-                tones.beep(1000, 200)
                 result[i] = "hahahaha"
-
-    return result
+                oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
+                if oocRule is not None:
+                    command = oocRule.getSpeechCommand()[0]
+                    result2.append(command)
+                    continue
+                else:
+                    restoredUtterance = PROPERTY_SPEECH_PATTERN2.sub(r'\1', utterance)
+                    result2.append(restoredUtterance)
+                    continue
+        result2.append(utterance)
+    return result2

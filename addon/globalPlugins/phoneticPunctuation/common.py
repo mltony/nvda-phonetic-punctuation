@@ -28,6 +28,7 @@ class FrenzyType(Enum):
     STATE = 'state'
     FORMAT = 'format'
     NUMERIC_FORMAT = 'numeric_format'
+    OTHER_RULE = 'other_rule'
 
 
 FRENZY_NAMES = {
@@ -36,6 +37,7 @@ FRENZY_NAMES = {
     FrenzyType.STATE: "States",
     FrenzyType.FORMAT: "Text formatting",
     FrenzyType.NUMERIC_FORMAT: "Numeric text formatting",
+    FrenzyType.OTHER_RULE: "Other audio rules",
 }
 
 FRENZY_NAMES_SINGULAR = {
@@ -44,6 +46,7 @@ FRENZY_NAMES_SINGULAR = {
     FrenzyType.STATE: "State",
     FrenzyType.FORMAT: "Format",
     FrenzyType.NUMERIC_FORMAT: "Numeric format",
+    FrenzyType.OTHER_RULE: "Other audio rule",
 }
 
 rulesDialogOpen = False
@@ -69,6 +72,13 @@ class NumericTextFormat(Enum):
 NUMERIC_TEXT_FORMAT_NAMES = {
     NumericTextFormat.FONT_SIZE: _('Font size'),
     NumericTextFormat.HEADING_LEVEL: _('Heading level'),
+}
+
+class OtherRule(Enum):
+    OUT_OF_CONTAINER = 'out_of_container'
+
+OTHER_RULE_NAMES = {
+    OtherRule.OUT_OF_CONTAINER: _('Out of container'),
 }
 
 ALLOWED_TYPES_BY_FRENZY_TYPE = {
@@ -104,4 +114,12 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleNumericProsody,
         audioRuleTextSubstitution,
     ],
+    FrenzyType.OTHER_RULE: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        #audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
+
 }

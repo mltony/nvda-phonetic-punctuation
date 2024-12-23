@@ -456,6 +456,8 @@ class AudioRule:
             return getattr(TextFormat, s)
         elif type == FrenzyType.NUMERIC_FORMAT:
             return getattr(NumericTextFormat, s)
+        elif type == FrenzyType.OTHER_RULE:
+            return getattr(OtherRule, s)
         else:
             raise ValueError
 
@@ -472,6 +474,8 @@ class AudioRule:
             return TEXT_FORMAT_NAMES[self.getFrenzyValue()]
         elif type == FrenzyType.NUMERIC_FORMAT:
             return NUMERIC_TEXT_FORMAT_NAMES[self.getFrenzyValue()]
+        elif type == FrenzyType.OTHER_RULE:
+            return OTHER_RULE_NAMES[self.getFrenzyValue()]
         else:
             raise ValueError
 

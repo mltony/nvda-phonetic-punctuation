@@ -79,6 +79,8 @@ class AudioRuleDialog(wx.Dialog):
             self.possibleFrenzyValues = [TEXT_FORMAT_NAMES[f] for f in TextFormat]
         elif frenzyType        == FrenzyType.NUMERIC_FORMAT:
             self.possibleFrenzyValues = [NUMERIC_TEXT_FORMAT_NAMES[f] for f in NumericTextFormat]
+        elif frenzyType        == FrenzyType.OTHER_RULE:
+            self.possibleFrenzyValues = [OTHER_RULE_NAMES[f] for f in OtherRule]
         else:
             raise RuntimeError
         self.disallowedFrenzyValues = disallowedFrenzyValues
@@ -292,6 +294,8 @@ class AudioRuleDialog(wx.Dialog):
             idx = list(TextFormat).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.NUMERIC_FORMAT:
             idx = list(NumericTextFormat).index(rule.getFrenzyValue())
+        elif self.frenzyType        == FrenzyType.OTHER_RULE:
+            idx = list(OtherRule).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.TEXT:
             pass
         else:
@@ -354,6 +358,8 @@ class AudioRuleDialog(wx.Dialog):
                     gui.messageBox(_("Minimum numeric value must be strictly less than maximum numeric value."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
                     self.numericProsodyControls['minNumericValue'].SetFocus()
                     return
+            elif self.frenzyType == FrenzyType.OTHER_RULE:
+                frenzyValue = [value for value, name in OTHER_RULE_NAMES.items() if name == frenzyValueStr][0]
             else:
                 raise RuntimeError
             if frenzyValue in self.disallowedFrenzyValues:
