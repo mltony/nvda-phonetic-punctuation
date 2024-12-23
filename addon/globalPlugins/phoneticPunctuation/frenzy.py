@@ -558,7 +558,7 @@ def new_getPropertiesSpeech(
 PROPERTY_SPEECH_PATTERN = re.compile(f"{PROPERTY_SPEECH_SIGNATURE}(\w+){PROPERTY_SPEECH_SIGNATURE}")
 PROPERTY_SPEECH_PATTERN2 = re.compile(f"{PROPERTY_SPEECH_SIGNATURE2}(.+){PROPERTY_SPEECH_SIGNATURE2}")
 original_getControlFieldSpeech = None
-def new_getControlFieldSpeech(  # noqa: C901
+def new_getControlFieldSpeech(
     attrs,
     ancestorAttrs,
     fieldType,
@@ -577,28 +577,29 @@ def new_getControlFieldSpeech(  # noqa: C901
         globalDbg = False
         
     for i, utterance in enumerate(result):
-        if m := PROPERTY_SPEECH_PATTERN.match(utterance):
-            # Replacing role speech with earcon
-            role = getattr(controlTypes.Role, m.group(1))
-            rule = roleRules[role]
-            command = rule.getSpeechCommand()[0]
-            result[i] = command
-        elif m := PROPERTY_SPEECH_PATTERN.search(utterance):
-            # We have the string, but there are also some other extra characters present.
-            # We assume this says something like "Out of frame" - that is we are exiting a container.
-            # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-            # TBD Playing earcon for exiting container
-            tones.beep(1000, 200)
-            result[i] = "hahahaha"
-        elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
-            # Just strip off the signature - this is just a role utterance
-            result[i] = m.group(1)
-        elif m := PROPERTY_SPEECH_PATTERN2.search(utterance):
-            # We have the string, but there are also some other extra characters present.
-            # We assume this says something like "Out of frame" - that is we are exiting a container.
-            # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-            # TBD Playing earcon for exiting container
-            tones.beep(1000, 200)
-            result[i] = "hahahaha"
+        if isinstance(utterance, str):
+            if m := PROPERTY_SPEECH_PATTERN.match(utterance):
+                # Replacing role speech with earcon
+                role = getattr(controlTypes.Role, m.group(1))
+                rule = roleRules[role]
+                command = rule.getSpeechCommand()[0]
+                result[i] = command
+            elif m := PROPERTY_SPEECH_PATTERN.search(utterance):
+                # We have the string, but there are also some other extra characters present.
+                # We assume this says something like "Out of frame" - that is we are exiting a container.
+                # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
+                # TBD Playing earcon for exiting container
+                tones.beep(1000, 200)
+                result[i] = "hahahaha"
+            elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
+                # Just strip off the signature - this is just a role utterance
+                result[i] = m.group(1)
+            elif m := PROPERTY_SPEECH_PATTERN2.search(utterance):
+                # We have the string, but there are also some other extra characters present.
+                # We assume this says something like "Out of frame" - that is we are exiting a container.
+                # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
+                # TBD Playing earcon for exiting container
+                tones.beep(1000, 200)
+                result[i] = "hahahaha"
 
     return result
