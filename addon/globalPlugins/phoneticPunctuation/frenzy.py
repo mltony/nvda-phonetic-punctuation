@@ -51,6 +51,7 @@ from . import phoneticPunctuation as pp
 from controlTypes import OutputReason
 from config.configFlags import ReportLineIndentation
 
+
 original_getObjectPropertiesSpeech = None
 
 def new_getObjectPropertiesSpeech(
@@ -104,6 +105,10 @@ def monkeyPatch():
     speech.speech.getControlFieldSpeech = new_getControlFieldSpeech
     speech.getPropertiesSpeech = speech.speech.getPropertiesSpeech
     speech.getControlFieldSpeech = speech.speech.getControlFieldSpeech
+    
+    global original_processAndLabelStates
+    original_processAndLabelStates = controlTypes.processAndLabelStates
+    controlTypes.processAndLabelStates = new_processAndLabelStates
 
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
@@ -114,15 +119,19 @@ def monkeyUnpatch():
     
     speech.getPropertiesSpeech = speech.speech.getPropertiesSpeech
     speech.getControlFieldSpeech = speech.speech.getControlFieldSpeech
+    
+    controlTypes.processAndLabelStates = original_processAndLabelStates
 
 
 roleRules = None
 stateRules = None
+stateDict = None
+negativeStateDict=None
 formatRules = None
 numericFormatRules = None
 otherRules = None
 def updateRules():
-    global roleRules, stateRules, formatRules, numericFormatRules, otherRules
+    global roleRules, stateRules, formatRules, numericFormatRules, otherRules, stateDict, negativeStateDict
     roleRules = {
         rule.getFrenzyValue(): rule
         for rule in pp.rulesByFrenzy[FrenzyType.ROLE]
@@ -148,7 +157,16 @@ def updateRules():
         for rule in pp.rulesByFrenzy[FrenzyType.OTHER_RULE]
         if rule.enabled
     }
-
+    stateDict = {
+        rule.getFrenzyValue(): rule.getSpeechCommand()[0]
+        for rule in pp.rulesByFrenzy[FrenzyType.STATE]
+        if rule.enabled
+    }
+    negativeStateDict = {
+        rule.getFrenzyValue(): rule.getSpeechCommand()[0]
+        for rule in pp.rulesByFrenzy[FrenzyType.NEGATIVE_STATE]
+        if rule.enabled
+    }
 
 class FakeTextInfo:
     def __init__(self, info, formatConfig, preventSpellingCharacters):
@@ -546,10 +564,16 @@ def new_getPropertiesSpeech(
 ):
     if not isPhoneticPunctuationEnabled():
         return original_getPropertiesSpeech(reason, **propertyValues)
-
-    role = propertyValues.get('role', None)
-    if role in roleRules and roleRules[role].enabled:
-        return [f"{PROPERTY_SPEECH_SIGNATURE}{role.name}{PROPERTY_SPEECH_SIGNATURE}"]
+    if "states" in propertyValues:
+        api.s.append(propertyValues['states'])
+    if "negativeStates" in propertyValues and len(propertyValues) > 1:
+        tones.beep(500, 50)
+    if len(propertyValues) == 1:
+        role = propertyValues.get('role', None)
+        if role in roleRules and roleRules[role].enabled:
+            return [f"{PROPERTY_SPEECH_SIGNATURE}{role.name}{PROPERTY_SPEECH_SIGNATURE}"]
+        states = propertyValues.get('states', None)
+            
     result =  original_getPropertiesSpeech(reason, **propertyValues)
     if globalDbg:
         #api.s.append(propertyValues)
@@ -584,6 +608,11 @@ def new_getControlFieldSpeech(
     result2 = []
     for i, utterance in enumerate(result):
         if isinstance(utterance, str):
+            # The differentce between PROPERTY_SPEECH_PATTERN and PROPERTY_SPEECH_PATTERN2 is as follows:
+            # PROPERTY_SPEECH_PATTERN is found when we aim to replace role utterance with an earcone because there is a rule configured for this role.
+            # PROPERTY_SPEECH_PATTERN2 is found when we plan to keep the original role utterance (no rule configured for that role), but we still need to detect "out of container" mode.
+            # When either of these two patterns are perfectly matched, this means we are entering said role.
+            # When the match is not perfect, e.g. extra characters are present, that means that we are exiting the container, and that the string is something like "out of frame" where "out of" might be localized.
             if m := PROPERTY_SPEECH_PATTERN.match(utterance):
                 # Replacing role speech with earcon
                 role = getattr(controlTypes.Role, m.group(1))
@@ -628,3 +657,28 @@ def new_getControlFieldSpeech(
                     continue
         result2.append(utterance)
     return result2
+
+original_processAndLabelStates = None
+def new_processAndLabelStates(
+    role,
+    states,
+    reason,
+    positiveStates= None,
+    negativeStates=None,
+    positiveStateLabelDict={},
+    negativeStateLabelDict={},
+):
+    # Braille provides custom dictionaries for positive and negative states - we don't mess with Braille.
+    # However when the dictionaries are empty, we provide our own custom dictionaries.
+    if len(positiveStateLabelDict) == 0 and len(negativeStateLabelDict) == 0:
+        positiveStateLabelDict = stateDict
+        negativeStateLabelDict = negativeStateDict
+    return  original_processAndLabelStates(
+        role,
+        states,
+        reason,
+        positiveStates,
+        negativeStates,
+        positiveStateLabelDict,
+        negativeStateLabelDict,
+    )

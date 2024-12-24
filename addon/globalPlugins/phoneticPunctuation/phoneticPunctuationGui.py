@@ -71,8 +71,30 @@ class AudioRuleDialog(wx.Dialog):
         self.frenzyType = frenzyType
         if frenzyType        == FrenzyType.ROLE:
             self.possibleFrenzyValues = [controlTypes.role._roleLabels[role] for role in controlTypes.Role]
-        elif frenzyType        == FrenzyType.STATE:
-            self.possibleFrenzyValues = [controlTypes.state._stateLabels[state] for state in controlTypes.State]
+        elif frenzyType        in [FrenzyType.STATE]:
+            possibleFrenzyValues = []
+            possibleFrenzyObjects = []
+            for state in controlTypes.State:
+                try:
+                    controlTypes.state._stateLabels[state]
+                    possibleFrenzyValues.append(state.displayString)
+                    possibleFrenzyObjects.append(state)
+                except KeyError:
+                    pass
+            self.possibleFrenzyValues = possibleFrenzyValues
+            self.possibleFrenzyObjects = possibleFrenzyObjects
+        elif frenzyType        in [FrenzyType.NEGATIVE_STATE]:
+            possibleFrenzyValues = []
+            possibleFrenzyObjects
+            for state in controlTypes.State:
+                try:
+                    controlTypes.state._negativeStateLabels[state]
+                    possibleFrenzyValues.append(state.negativeDisplayString)
+                    possibleFrenzyObjects.append(state)
+                except KeyError:
+                    pass
+            self.possibleFrenzyValues = possibleFrenzyValues
+            self.possibleFrenzyObjects = possibleFrenzyObjects
         elif frenzyType        == FrenzyType.TEXT:
             self.possibleFrenzyValues = []
         elif frenzyType        == FrenzyType.FORMAT:
@@ -288,8 +310,8 @@ class AudioRuleDialog(wx.Dialog):
         idx = None
         if self.frenzyType        == FrenzyType.ROLE:
             idx = list(controlTypes.Role).index(rule.getFrenzyValue())
-        elif self.frenzyType        == FrenzyType.STATE:
-            idx = list(controlTypes.State).index(rule.getFrenzyValue())
+        elif self.frenzyType        in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE]:
+            idx = self.possibleFrenzyObjects.index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.FORMAT:
             idx = list(TextFormat).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.NUMERIC_FORMAT:
@@ -348,8 +370,8 @@ class AudioRuleDialog(wx.Dialog):
             frenzyValueStr = self.possibleFrenzyValues[self.frenzyValueCategory.control.GetSelection()]
             if self.frenzyType == FrenzyType.ROLE:
                 frenzyValue = [k for k, v in controlTypes.role._roleLabels.items() if v == frenzyValueStr][0]
-            elif self.frenzyType == FrenzyType.STATE:
-                frenzyValue = [k for k, v in controlTypes.state._stateLabels.items() if v == frenzyValueStr][0]
+            elif self.frenzyType in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE]:
+                frenzyValue = self.possibleFrenzyObjects[self.frenzyValueCategory.control.GetSelection()]
             elif self.frenzyType == FrenzyType.FORMAT:
                 frenzyValue = [value for value, name in TEXT_FORMAT_NAMES.items() if name == frenzyValueStr][0]
             elif self.frenzyType == FrenzyType.NUMERIC_FORMAT:

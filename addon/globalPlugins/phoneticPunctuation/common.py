@@ -26,6 +26,7 @@ class FrenzyType(Enum):
     TEXT = 'text'
     ROLE = 'role'
     STATE = 'state'
+    NEGATIVE_STATE = 'negative_state'
     FORMAT = 'format'
     NUMERIC_FORMAT = 'numeric_format'
     OTHER_RULE = 'other_rule'
@@ -35,6 +36,7 @@ FRENZY_NAMES = {
     FrenzyType.TEXT: "Text regular expressions",
     FrenzyType.ROLE: "Roles",
     FrenzyType.STATE: "States",
+    FrenzyType.NEGATIVE_STATE: "Negative states",
     FrenzyType.FORMAT: "Text formatting",
     FrenzyType.NUMERIC_FORMAT: "Numeric text formatting",
     FrenzyType.OTHER_RULE: "Other audio rules",
@@ -44,6 +46,7 @@ FRENZY_NAMES_SINGULAR = {
     FrenzyType.TEXT: "Text regular expression pattern",
     FrenzyType.ROLE: "Role",
     FrenzyType.STATE: "State",
+    FrenzyType.NEGATIVE_STATE: "Negative state",
     FrenzyType.FORMAT: "Format",
     FrenzyType.NUMERIC_FORMAT: "Numeric format",
     FrenzyType.OTHER_RULE: "Other audio rule",
