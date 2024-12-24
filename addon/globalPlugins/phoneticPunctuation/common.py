@@ -106,6 +106,13 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleProsody,
         audioRuleTextSubstitution,
     ],
+    FrenzyType.NEGATIVE_STATE: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        audioRuleProsody,
+        audioRuleTextSubstitution,
+    ],
     FrenzyType.FORMAT: [
         audioRuleBuiltInWave,
         audioRuleWave,

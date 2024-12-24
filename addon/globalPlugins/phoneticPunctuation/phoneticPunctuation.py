@@ -450,7 +450,7 @@ class AudioRule:
         s = self.frenzyValue
         if type == FrenzyType.ROLE:
             return getattr(controlTypes.Role, s)
-        elif type == FrenzyType.STATE:
+        elif type in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE]:
             return getattr(controlTypes.State, s)
         elif type == FrenzyType.FORMAT:
             return getattr(TextFormat, s)
@@ -468,7 +468,7 @@ class AudioRule:
         s = self.frenzyValue
         if type == FrenzyType.ROLE:
             return controlTypes.role._roleLabels[getattr(controlTypes.Role, s)]
-        elif type == FrenzyType.STATE:
+        elif type in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE]:
             return controlTypes.state._stateLabels[getattr(controlTypes.State, s)]
         elif type == FrenzyType.FORMAT:
             return TEXT_FORMAT_NAMES[self.getFrenzyValue()]

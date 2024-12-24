@@ -564,10 +564,6 @@ def new_getPropertiesSpeech(
 ):
     if not isPhoneticPunctuationEnabled():
         return original_getPropertiesSpeech(reason, **propertyValues)
-    if "states" in propertyValues:
-        api.s.append(propertyValues['states'])
-    if "negativeStates" in propertyValues and len(propertyValues) > 1:
-        tones.beep(500, 50)
     if len(propertyValues) == 1:
         role = propertyValues.get('role', None)
         if role in roleRules and roleRules[role].enabled:

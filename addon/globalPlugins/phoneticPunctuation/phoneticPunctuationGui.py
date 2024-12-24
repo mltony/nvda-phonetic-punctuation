@@ -85,7 +85,7 @@ class AudioRuleDialog(wx.Dialog):
             self.possibleFrenzyObjects = possibleFrenzyObjects
         elif frenzyType        in [FrenzyType.NEGATIVE_STATE]:
             possibleFrenzyValues = []
-            possibleFrenzyObjects
+            possibleFrenzyObjects = []
             for state in controlTypes.State:
                 try:
                     controlTypes.state._negativeStateLabels[state]
