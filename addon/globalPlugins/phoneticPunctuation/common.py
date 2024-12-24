@@ -12,6 +12,7 @@ audioRuleBeep = "beep"
 audioRuleProsody = "prosody"
 audioRuleNumericProsody = "numericProsody"
 audioRuleTextSubstitution = "textSubstitution"
+audioRuleNoop = "noop"
 
 audioRuleTypes = [
     audioRuleBuiltInWave,
@@ -20,6 +21,7 @@ audioRuleTypes = [
     audioRuleProsody,
     audioRuleNumericProsody,
     audioRuleTextSubstitution,
+    audioRuleNoop,
 ]
 
 class FrenzyType(Enum):
@@ -105,6 +107,7 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleBeep,
         audioRuleProsody,
         audioRuleTextSubstitution,
+        audioRuleNoop,
     ],
     FrenzyType.NEGATIVE_STATE: [
         audioRuleBuiltInWave,
@@ -112,6 +115,7 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleBeep,
         audioRuleProsody,
         audioRuleTextSubstitution,
+        audioRuleNoop,
     ],
     FrenzyType.FORMAT: [
         audioRuleBuiltInWave,

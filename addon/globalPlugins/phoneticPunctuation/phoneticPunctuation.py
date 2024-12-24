@@ -352,7 +352,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue minNumericValue maxNumericValue prosodyMinOffset prosodyMaxOffset replacementPattern".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue minNumericValue maxNumericValue prosodyMinOffset prosodyMaxOffset replacementPattern suppressStateClutter".split()
     def __init__(
         self,
         comment,
@@ -378,6 +378,7 @@ class AudioRule:
         prosodyMinOffset=-10,
         prosodyMaxOffset=10,
         replacementPattern=None,
+        suppressStateClutter=False,
     ):
         self.comment = comment
         self.pattern = pattern
@@ -408,6 +409,7 @@ class AudioRule:
         self.prosodyMinOffset = prosodyMinOffset
         self.prosodyMaxOffset = prosodyMaxOffset
         self.replacementPattern = replacementPattern
+        self.suppressStateClutter = suppressStateClutter
         self.regexp = re.compile(self.pattern)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
@@ -430,6 +432,8 @@ class AudioRule:
             return f"TextSubstitution: '{self.replacementPattern}'"
         elif self.ruleType in [audioRuleNumericProsody]:
             return "DynamicNumericProsody"
+        elif self.ruleType in [audioRuleNoop]:
+            return "Noop"
         else:
             raise ValueError()
 
@@ -505,7 +509,7 @@ class AudioRule:
                 preCommand = classClass(multiplier=self.prosodyMultiplier)
             postCommand = classClass()
             return preCommand, postCommand
-        elif self.ruleType in [audioRuleTextSubstitution, audioRuleNumericProsody]:
+        elif self.ruleType in [audioRuleTextSubstitution, audioRuleNumericProsody, audioRuleNoop]:
             return None, None
         else:
             raise ValueError()

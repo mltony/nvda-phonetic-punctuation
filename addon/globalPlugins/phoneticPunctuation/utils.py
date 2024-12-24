@@ -112,6 +112,7 @@ def initConfiguration():
         "enabled" : "boolean( default=True)",
         "rules" : "string( default='')",
         "applicationsBlacklist" : "string( default='')",
+        "stateVerbose" : "boolean( default=True)",
     }
     config.conf.spec[phoneticPunctuationConfigKey] = confspec
 

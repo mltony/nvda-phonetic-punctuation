@@ -46,6 +46,7 @@ import wx
 
 from .common import *
 from .utils import *
+from . import utils
 from .commands import *
 from . import phoneticPunctuation as pp
 from controlTypes import OutputReason
@@ -157,16 +158,25 @@ def updateRules():
         for rule in pp.rulesByFrenzy[FrenzyType.OTHER_RULE]
         if rule.enabled
     }
-    stateDict = {
-        rule.getFrenzyValue(): rule.getSpeechCommand()[0]
-        for rule in pp.rulesByFrenzy[FrenzyType.STATE]
-        if rule.enabled
-    }
-    negativeStateDict = {
-        rule.getFrenzyValue(): rule.getSpeechCommand()[0]
-        for rule in pp.rulesByFrenzy[FrenzyType.NEGATIVE_STATE]
-        if rule.enabled
-    }
+    verbose = utils.getConfig("stateVerbose")
+    stateDict = {}
+    for rule in pp.rulesByFrenzy[FrenzyType.STATE]:
+        if                  not verbose and rule.suppressStateClutter:
+            stateDict[rule.getFrenzyValue()] = ""
+        elif rule.ruleType == audioRuleNoop:
+            # Don't set any value - NVDA will default to builtin state announcement
+            continue
+        else:
+            stateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
+    negativeStateDict = {}
+    for rule in pp.rulesByFrenzy[FrenzyType.NEGATIVE_STATE]:
+        if                  not verbose and rule.suppressStateClutter:
+            negativeStateDict[rule.getFrenzyValue()] = ""
+        elif rule.ruleType == audioRuleNoop:
+            # Don't set any value - NVDA will default to builtin state announcement
+            continue
+        else:
+            negativeStateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
 
 class FakeTextInfo:
     def __init__(self, info, formatConfig, preventSpellingCharacters):

@@ -44,6 +44,7 @@ import wx
 from .phoneticPunctuationGui import RulesDialog
 from . import phoneticPunctuation as pp
 from . import utils
+from . import frenzy
 
 utils.initConfiguration()
 pp.reloadRules()
@@ -80,3 +81,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         else:
             msg = _("Phonetic punctuation off")
         ui.message(msg)
+
+    @script(description='Toggle state verbosity reporting.', gestures=['kb:NVDA+Alt+['])
+    def script_toggleStateVerbosity(self, gesture):
+        verbose = utils.getConfig("stateVerbose")
+        verbose = not verbose
+        utils.setConfig("stateVerbose", verbose)
+        if verbose:
+            msg = _("Verbose state reporting")
+        else:
+            msg = _("Concise state reporting")
+        ui.message(msg)
+        frenzy.updateRules()

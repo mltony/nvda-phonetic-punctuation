@@ -53,6 +53,7 @@ class AudioRuleDialog(wx.Dialog):
         audioRuleProsody: _("&Prosody"),
         audioRuleNumericProsody: _("&Prosody"),
         audioRuleTextSubstitution: _("&Text"),
+        audioRuleNoop: _("&Keep original"),
     }
     PROSODY_LABELS = [
         "Pitch",
@@ -150,6 +151,7 @@ class AudioRuleDialog(wx.Dialog):
             audioRuleProsody: [],
             audioRuleNumericProsody: [],
             audioRuleTextSubstitution: [],
+            audioRuleNoop: [],
         }
 
       # Translators: built in wav category  combo box
@@ -263,7 +265,10 @@ class AudioRuleDialog(wx.Dialog):
         label = _("&Replacement pattern")
         self.replacementPatternTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
         self.typeControls[audioRuleTextSubstitution].append(self.replacementPatternTextCtrl)
-
+      # suppressStateClutter checkbox
+        labelText = _("Suppress this state in non-verbose mode.")
+        self.suppressStateClutterCheckBox=sHelper.addItem(wx.CheckBox(self,label=labelText))
+        self.suppressStateClutterCheckBox.SetValue(False)
       # Translators: label for comment edit box
         commentLabelText = _("&Comment")
         self.commentTextCtrl=sHelper.addLabeledControl(commentLabelText, wx.TextCtrl)
@@ -286,6 +291,7 @@ class AudioRuleDialog(wx.Dialog):
             self.patternTextCtrl.Disable()
             self.passThroughCheckBox.Disable()
             self.frenzyValueCategory.control.SetFocus()
+            self.suppressStateClutterCheckBox.Enable(self.frenzyType in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE])
 
 
     def getType(self):
@@ -345,6 +351,7 @@ class AudioRuleDialog(wx.Dialog):
         for name, control in self.numericProsodyControls.items():
             control.SetValue(getattr(rule, name))
         self.replacementPatternTextCtrl.SetValue(rule.replacementPattern or "")
+        self.suppressStateClutterCheckBox.SetValue(rule.suppressStateClutter)
         self.onType(None)
 
     def makeRule(self):
@@ -508,6 +515,7 @@ class AudioRuleDialog(wx.Dialog):
                 prosodyMinOffset=self.numericProsodyControls['prosodyMinOffset'].GetValue(),
                 prosodyMaxOffset=self.numericProsodyControls['prosodyMaxOffset'].GetValue(),
                 replacementPattern = self.replacementPatternTextCtrl.GetValue(),
+                suppressStateClutter=self.suppressStateClutterCheckBox.GetValue(),
             )
             return result
         except Exception as e:
@@ -720,6 +728,9 @@ class RulesDialog(SettingsPanel):
                 key=lambda r:r.getFrenzyType().value,
             )
             self.frenzyRules = None
+            i = self.frenzyCategory.control.GetSelection()
+            self.prepareRulesForFrenzy(list(FrenzyType)[i])
+            
         
     def prepareRulesForFrenzy(self, frenzyType):
         self.frenzyType = frenzyType
