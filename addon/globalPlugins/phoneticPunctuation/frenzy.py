@@ -725,7 +725,7 @@ def new_processAndLabelStates(
 ):
     # Braille provides custom dictionaries for positive and negative states - we don't mess with Braille.
     # However when the dictionaries are empty, we provide our own custom dictionaries.
-    if len(positiveStateLabelDict) == 0 and len(negativeStateLabelDict) == 0:
+    if isPhoneticPunctuationEnabled() and len(positiveStateLabelDict) == 0 and len(negativeStateLabelDict) == 0:
         positiveStateLabelDict = stateDict
         negativeStateLabelDict = negativeStateDict
     return  original_processAndLabelStates(
@@ -777,4 +777,3 @@ def new_getTextInfoSpeech_considerSpelling(
                 ),
             )
             yield descriptionSequence
-
