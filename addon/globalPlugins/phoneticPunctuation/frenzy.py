@@ -111,6 +111,10 @@ def monkeyPatch():
     original_processAndLabelStates = controlTypes.processAndLabelStates
     controlTypes.processAndLabelStates = new_processAndLabelStates
 
+    global original_getTextInfoSpeech_considerSpelling    
+    original_getTextInfoSpeech_considerSpelling = speech.speech._getTextInfoSpeech_considerSpelling
+    speech.speech._getTextInfoSpeech_considerSpelling = new_getTextInfoSpeech_considerSpelling
+
 def monkeyUnpatch():
     speech.speech.getObjectPropertiesSpeech = original_getObjectPropertiesSpeech
     speech.speech.getTextInfoSpeech = original_getTextInfoSpeech
@@ -122,6 +126,8 @@ def monkeyUnpatch():
     speech.getControlFieldSpeech = speech.speech.getControlFieldSpeech
     
     controlTypes.processAndLabelStates = original_processAndLabelStates
+    
+    speech.speech._getTextInfoSpeech_considerSpelling = original_getTextInfoSpeech_considerSpelling
 
 
 roleRules = None
@@ -249,8 +255,8 @@ class FakeTextInfo:
                 ):
                     del result[-1]
                 else:
-                    if self.preventSpellingCharacters and isinstance(field, str):
                         # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
+                    if False and self.preventSpellingCharacters and isinstance(field, str):
                         field = field + '\n'
                     if isinstance(field,textInfos.FieldCommand):
                         if field.command == "controlStart":
@@ -384,6 +390,20 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
+    dbg = info.text == '\n'
+    if dbg:
+        tones.beep(500, 50)
+        dbgSequence = list(original_getTextInfoSpeech(
+            info,
+            useCache ,
+            formatConfig,
+            unit ,
+            reason ,
+            _prefixSpeechCommand,
+            onlyInitialFields,
+            suppressBlanks,
+        ))
+        api.b.append(dbgSequence)
     if not isPhoneticPunctuationEnabled():
         yield from original_getTextInfoSpeech(
             info,
@@ -395,9 +415,6 @@ def new_getTextInfoSpeech(
             onlyInitialFields,
             suppressBlanks,
         )
-        speakTextInfoState = speech.speech.SpeakTextInfoState(info.obj)
-        controlFieldStackCache = speakTextInfoState.controlFieldStackCache
-        api.s.append((info.text, controlFieldStackCache))
         return
     if True:
         # Computing formatConfig - identical to logic in the original function
@@ -557,8 +574,9 @@ def new_getTextInfoSpeech(
             result.append(item)
         elif isinstance(item, tuple):
             # Interval
-            i, j = item
-            fakeTextInfo.setStartAndEnd(i, j)
+            start, end = item
+            fakeTextInfo.setStartAndEnd(start, end)
+            effectiveSuppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -567,8 +585,21 @@ def new_getTextInfoSpeech(
                 reason ,
                 _prefixSpeechCommand,
                 onlyInitialFields,
-                suppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks,
+                suppressBlanks=effectiveSuppressBlanks,
             ))
+            if dbg:
+                dbgSequence = list(original_getTextInfoSpeech(
+                    info,
+                    useCache ,
+                    formatConfig,
+                    unit ,
+                    reason ,
+                    _prefixSpeechCommand,
+                    onlyInitialFields,
+                    suppressBlanks=suppressBlanks,
+                ))
+                #api.s.append((start, end, fakeTextInfo.getTextWithFields(formatConfig), sequence, f"{effectiveSuppressBlanks=} {i=} {lastIntervalIndex=} {isBlankSoFar=} {suppressBlanks=}", filteredIntervalsAndCommands))
+                api.s.append((sequence, dbgSequence))
             isBlank = isBlankSequence(sequence)
             if not isBlank:
                 isBlankSoFar = False
@@ -579,9 +610,6 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
-    speakTextInfoState = speech.speech.SpeakTextInfoState(info.obj)
-    controlFieldStackCache = speakTextInfoState.controlFieldStackCache
-    api.s.append((info.text, controlFieldStackCache))
     yield from result
 
 # some random funny Unicode characters
@@ -611,6 +639,7 @@ def new_getPropertiesSpeech(
 PROPERTY_SPEECH_PATTERN = re.compile(f"{PROPERTY_SPEECH_SIGNATURE}(\w+){PROPERTY_SPEECH_SIGNATURE}")
 PROPERTY_SPEECH_PATTERN2 = re.compile(f"{PROPERTY_SPEECH_SIGNATURE2}(.+){PROPERTY_SPEECH_SIGNATURE2}")
 original_getControlFieldSpeech = None
+api.co = []
 def new_getControlFieldSpeech(
     attrs,
     ancestorAttrs,
@@ -674,7 +703,9 @@ def new_getControlFieldSpeech(
     # Some logic downstream sometimes appears to filter out our earcons.
     # I could nevre have figured out where exactly this happens, but presumably somewhere in speech.speech.getTextInfoSpeech.
     # However adding an empty string somehow resolves this problem.
-    result2.append("")
+    #result2.append("")
+    if len(result2) == 1 and isinstance(result2[0], PpWaveFileCommand):
+        result2.insert(1, result2[0])
     return result2
 
 original_processAndLabelStates = None
@@ -701,3 +732,42 @@ def new_processAndLabelStates(
         positiveStateLabelDict,
         negativeStateLabelDict,
     )
+
+original_getTextInfoSpeech_considerSpelling = None
+def new_getTextInfoSpeech_considerSpelling(
+    unit,
+    onlyInitialFields,
+    textWithFields,
+    reason,
+    speechSequence,
+    language,
+):
+    """
+    For some reason the original function is set up to drop all the previous commands unless a string is present.
+    This inadvertently drops our earcons when navigating by character.
+    Overriding the whole function to patch that behavior.
+    """
+    #if onlyInitialFields or any(isinstance(x, str) for x in speechSequence):
+    if True:
+        yield speechSequence
+    if not onlyInitialFields:
+        spellingSequence = list(
+            speech.speech.getSpellingSpeech(
+                textWithFields[0],
+                locale=language,
+            ),
+        )
+        speech.types.logBadSequenceTypes(spellingSequence)
+        yield spellingSequence
+        if (
+            reason == OutputReason.CARET
+            and unit == textInfos.UNIT_CHARACTER
+            and config.conf["speech"]["delayedCharacterDescriptions"]
+        ):
+            descriptionSequence = list(
+                speech.speech.getSingleCharDescription(
+                    textWithFields[0],
+                    locale=language,
+                ),
+            )
+            yield descriptionSequence
