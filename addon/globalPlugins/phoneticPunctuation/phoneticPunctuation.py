@@ -352,7 +352,7 @@ class MaskedString:
         self.s = s
 
 class AudioRule:
-    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue minNumericValue maxNumericValue prosodyMinOffset prosodyMaxOffset replacementPattern suppressStateClutter".split()
+    jsonFields = "comment pattern ruleType wavFile builtInWavFile tone duration enabled caseSensitive startAdjustment endAdjustment prosodyName prosodyOffset prosodyMultiplier volume passThrough frenzyType frenzyValue minNumericValue maxNumericValue prosodyMinOffset prosodyMaxOffset replacementPattern suppressStateClutter applicationFilterRegex windowTitleRegex urlRegex".split()
     def __init__(
         self,
         comment,
@@ -379,6 +379,9 @@ class AudioRule:
         prosodyMaxOffset=10,
         replacementPattern=None,
         suppressStateClutter=False,
+        applicationFilterRegex="",
+        windowTitleRegex="",
+        urlRegex="",
     ):
         self.comment = comment
         self.pattern = pattern
@@ -410,7 +413,14 @@ class AudioRule:
         self.prosodyMaxOffset = prosodyMaxOffset
         self.replacementPattern = replacementPattern
         self.suppressStateClutter = suppressStateClutter
+        self.applicationFilterRegex = applicationFilterRegex
+        self.windowTitleRegex = windowTitleRegex
+        self.urlRegex = urlRegex
+
         self.regexp = re.compile(self.pattern)
+        self._applicationFilterRegex = re.compile(applicationFilterRegex)
+        self._windowTitleRegex = re.compile(windowTitleRegex)
+        self._urlRegex = re.compile(urlRegex)
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
@@ -602,19 +612,48 @@ def reloadRules():
         log.error(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
     frenzy.updateRules()
 
+def onPostNvdaStartup():
+    if any([len(rule.urlRegex) > 0 for rule in rulesByFrenzy[FrenzyType.TEXT]]) and not isURLResolutionAvailable():
+        wx.CallAfter(
+            gui.messageBox,
+            _(
+                "Error initializing some text rules of Earcons and Speech Rules add-on since they contain URL filter.\n"
+                "URL detection feature requires BrowserNav v2.6.2 or later add-on to be installed.\n"
+                "However it is either not installed, or failed to initialize.\n"
+                "Please install the latest BrowserNav add-on from add-on store and restart NVDA.\n"
+                "In the mean time all text rules with URL filter will be disabled.\n"
+            ),
+            _("Earcons and speech rules add-on Error"),
+            wx.ICON_ERROR | wx.OK,
+        )
+        return
+
+core.postNvdaStartup.register(onPostNvdaStartup)
+
 originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
 originalProcessSpeechSymbols = None
 originalTonesInitialize = None
 
-api.ps = []
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
-    api.ps.append(speechSequence)
     if isPhoneticPunctuationEnabled():
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
         newSequence = speechSequence
+        appName, windowTitle, url = getCurrentContext()
         for rule in rulesByFrenzy[FrenzyType.TEXT]:
+            if len(rule.applicationFilterRegex) > 0 and not rule._applicationFilterRegex.search(appName):
+                continue
+            if len(rule.windowTitleRegex) > 0 and not rule._windowTitleRegex.search(windowTitle):
+                continue
+            if (
+                len(rule.urlRegex) > 0 
+                and (
+                    url is None
+                    or not rule._urlRegex.search(url)
+                )
+            ):
+                continue
             newSequence = processRule(newSequence, rule, symbolLevel)
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
         #mylog("Speaking!")

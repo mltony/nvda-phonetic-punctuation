@@ -777,3 +777,4 @@ def new_getTextInfoSpeech_considerSpelling(
                 ),
             )
             yield descriptionSequence
+

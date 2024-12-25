@@ -132,3 +132,29 @@ def isAppBlacklisted():
 
 def isPhoneticPunctuationEnabled():
     return not isAppBlacklisted() and  getConfig("enabled") and not  common.rulesDialogOpen
+
+def isURLResolutionAvailable():
+    try:
+        api.getCurrentURL
+        return True
+    except AttributeError:
+        return False
+
+def getCurrentURLSafe():
+    try:
+        return api.getCurrentURL()
+    except AttributeError:
+        return ""
+
+def getCurrentContext():
+    url = getCurrentURLSafe()
+    fg = api.getForegroundObject()
+    try:
+        appName = fg.appModule.appName
+    except AttributeError:
+        appName = ''
+    try:
+        windowTitle = fg.name or ""
+    except AttributeError:
+        windowTitle = ""
+    return appName, windowTitle, url

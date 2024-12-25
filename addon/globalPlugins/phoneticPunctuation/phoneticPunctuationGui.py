@@ -276,8 +276,17 @@ class AudioRuleDialog(wx.Dialog):
         self.testButton = sHelper.addItem (wx.Button (self, label = _("&Test, press twice for repeated sound")))
         self.testButton.Bind(wx.EVT_BUTTON, self.onTestClick)
 
+      # application name filter regex
+        label = _("Filter applications regex")
+        self.applicationFilterRegexTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+      # Window title filter regex
+        label = _("Filter window title regex")
+        self.windowTitleRegexTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+      # URL filter regex
+        label = _("Filter URL regex")
+        self.urlRegexTextCtrl=sHelper.addLabeledControl(label, wx.TextCtrl)
+      # OK Cancel buttons
         sHelper.addDialogDismissButtons(self.CreateButtonSizer(wx.OK|wx.CANCEL))
-
         mainSizer.Add(sHelper.sizer,border=20,flag=wx.ALL)
         mainSizer.Fit(self)
         self.SetSizer(mainSizer)
@@ -292,6 +301,12 @@ class AudioRuleDialog(wx.Dialog):
             self.passThroughCheckBox.Disable()
             self.frenzyValueCategory.control.SetFocus()
         self.suppressStateClutterCheckBox.Enable(self.frenzyType in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE])
+        for textFilterTextCtrl in [
+            self.applicationFilterRegexTextCtrl,
+            self.windowTitleRegexTextCtrl,
+            self.urlRegexTextCtrl,
+        ]:
+            textFilterTextCtrl.Enable(self.frenzyType in [FrenzyType.TEXT])
 
 
     def getType(self):
@@ -352,6 +367,9 @@ class AudioRuleDialog(wx.Dialog):
             control.SetValue(getattr(rule, name))
         self.replacementPatternTextCtrl.SetValue(rule.replacementPattern or "")
         self.suppressStateClutterCheckBox.SetValue(rule.suppressStateClutter)
+        self.applicationFilterRegexTextCtrl.SetValue(rule.applicationFilterRegex)
+        self.windowTitleRegexTextCtrl.SetValue(rule.windowTitleRegex)
+        self.urlRegexTextCtrl.SetValue(rule.urlRegex)
         self.onType(None)
 
     def makeRule(self):
@@ -373,6 +391,33 @@ class AudioRuleDialog(wx.Dialog):
                 self.patternTextCtrl.SetFocus()
                 return
             frenzyValue = None
+            
+            for textFilterTextCtrl in [
+                self.applicationFilterRegexTextCtrl,
+                self.windowTitleRegexTextCtrl,
+                self.urlRegexTextCtrl,
+            ]:
+                try:
+                    r = re.compile(textFilterTextCtrl.GetValue())
+                except sre_constants.error:
+                    # Translators: Invalid regular expression
+                    gui.messageBox(_("Invalid regular expression."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                    textFilterTextCtrl.SetFocus()
+                    return
+            if len(self.urlRegexTextCtrl.GetValue()) > 0 and not isURLResolutionAvailable():
+                gui.messageBox(
+                    _(
+                        "Error: you have entered URL filter for this rule.\n"
+                        "URL detection feature requires BrowserNav v2.6.2 or later add-on to be installed.\n"
+                        "However it is either not installed, or failed to initialize.\n"
+                        "Please install the latest BrowserNav add-on from add-on store and restart NVDA.\n"
+                        "Alternatively, please clear URL regex field to enable this rule on all web sites.\n"
+                    ),
+                    _("Earcons and speech rules add-on Error"),
+                    wx.ICON_ERROR | wx.OK,
+                )
+                self.urlRegexTextCtrl.SetFocus()
+                return
         else:
             frenzyValueStr = self.possibleFrenzyValues[self.frenzyValueCategory.control.GetSelection()]
             if self.frenzyType == FrenzyType.ROLE:
@@ -516,6 +561,9 @@ class AudioRuleDialog(wx.Dialog):
                 prosodyMaxOffset=self.numericProsodyControls['prosodyMaxOffset'].GetValue(),
                 replacementPattern = self.replacementPatternTextCtrl.GetValue(),
                 suppressStateClutter=self.suppressStateClutterCheckBox.GetValue(),
+                applicationFilterRegex=self.applicationFilterRegexTextCtrl.GetValue(),
+                windowTitleRegex=self.windowTitleRegexTextCtrl.GetValue(),
+                urlRegex=self.urlRegexTextCtrl.GetValue(),
             )
             return result
         except Exception as e:
