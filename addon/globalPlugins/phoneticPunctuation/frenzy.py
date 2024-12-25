@@ -390,20 +390,6 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
-    dbg = info.text == '\n'
-    if dbg:
-        tones.beep(500, 50)
-        dbgSequence = list(original_getTextInfoSpeech(
-            info,
-            useCache ,
-            formatConfig,
-            unit ,
-            reason ,
-            _prefixSpeechCommand,
-            onlyInitialFields,
-            suppressBlanks,
-        ))
-        api.b.append(dbgSequence)
     if not isPhoneticPunctuationEnabled():
         yield from original_getTextInfoSpeech(
             info,
@@ -587,19 +573,6 @@ def new_getTextInfoSpeech(
                 onlyInitialFields,
                 suppressBlanks=effectiveSuppressBlanks,
             ))
-            if dbg:
-                dbgSequence = list(original_getTextInfoSpeech(
-                    info,
-                    useCache ,
-                    formatConfig,
-                    unit ,
-                    reason ,
-                    _prefixSpeechCommand,
-                    onlyInitialFields,
-                    suppressBlanks=suppressBlanks,
-                ))
-                #api.s.append((start, end, fakeTextInfo.getTextWithFields(formatConfig), sequence, f"{effectiveSuppressBlanks=} {i=} {lastIntervalIndex=} {isBlankSoFar=} {suppressBlanks=}", filteredIntervalsAndCommands))
-                api.s.append((sequence, dbgSequence))
             isBlank = isBlankSequence(sequence)
             if not isBlank:
                 isBlankSoFar = False
@@ -700,12 +673,6 @@ def new_getControlFieldSpeech(
                     result2.append(restoredUtterance)
                     continue
         result2.append(utterance)
-    # Some logic downstream sometimes appears to filter out our earcons.
-    # I could nevre have figured out where exactly this happens, but presumably somewhere in speech.speech.getTextInfoSpeech.
-    # However adding an empty string somehow resolves this problem.
-    #result2.append("")
-    if len(result2) == 1 and isinstance(result2[0], PpWaveFileCommand):
-        result2.insert(1, result2[0])
     return result2
 
 original_processAndLabelStates = None
