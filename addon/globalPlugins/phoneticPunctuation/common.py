@@ -81,9 +81,11 @@ NUMERIC_TEXT_FORMAT_NAMES = {
 
 class OtherRule(Enum):
     OUT_OF_CONTAINER = 'out_of_container'
+    BLANK = "blank"
 
 OTHER_RULE_NAMES = {
     OtherRule.OUT_OF_CONTAINER: _('Out of container'),
+    OtherRule.BLANK: _('Blank announcement'),
 }
 
 ALLOWED_TYPES_BY_FRENZY_TYPE = {

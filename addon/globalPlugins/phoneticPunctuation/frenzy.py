@@ -563,6 +563,30 @@ def new_getTextInfoSpeech(
             start, end = item
             fakeTextInfo.setStartAndEnd(start, end)
             effectiveSuppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks
+            if not effectiveSuppressBlanks:
+                # We are not suppressing the blanks
+                # 1. back up cache
+                # 2. Get the sequence with blanks suppressed, so that we can compare it later and decide whether blank is to be spoken
+                # 3. Restore the cache if applicable
+                if isinstance(useCache, speech.speech.SpeakTextInfoState):
+                    useCacheBackup = useCache.copy()
+                elif useCache:
+                    speakTextInfoStateBackup = speech.speech.SpeakTextInfoState(info.obj)
+                suppressedSequence = list(original_getTextInfoSpeech(
+                    fakeTextInfo,
+                    useCache ,
+                    formatConfig,
+                    unit ,
+                    reason ,
+                    _prefixSpeechCommand,
+                    onlyInitialFields,
+                    suppressBlanks=True,
+                ))
+                if isinstance(useCache, speech.speech.SpeakTextInfoState):
+                    useCache = useCacheBackup
+                elif useCache:
+                    speakTextInfoStateBackup.updateObj()
+
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -573,6 +597,20 @@ def new_getTextInfoSpeech(
                 onlyInitialFields,
                 suppressBlanks=effectiveSuppressBlanks,
             ))
+            if not effectiveSuppressBlanks:
+                blankRule = otherRules.get(OtherRule.BLANK, None)
+                if blankRule is not None:
+                    # only compare string commands
+                    sequenceStrings = [s for ss in sequence for s in ss if isinstance(s, str)]
+                    suppressedSequenceStrings = [s for ss in suppressedSequence for s in ss if isinstance(s, str)]
+                    if len(sequenceStrings) == 1 and len(suppressedSequenceStrings) == 0:
+                        # Blank detected!
+                        blankString = sequenceStrings[0]
+                        blankCommand = blankRule.getSpeechCommand()[0]
+                        for subsequence in sequence:
+                            for i, command in enumerate(subsequence):
+                                if command == blankString:
+                                    subsequence[i] = blankCommand
             isBlank = isBlankSequence(sequence)
             if not isBlank:
                 isBlankSoFar = False
@@ -712,6 +750,7 @@ def new_getTextInfoSpeech_considerSpelling(
     """
     For some reason the original function is set up to drop all the previous commands unless a string is present.
     This inadvertently drops our earcons when navigating by character.
+    Specifically "out of container" earcon.
     Overriding the whole function to patch that behavior.
     """
     #if onlyInitialFields or any(isinstance(x, str) for x in speechSequence):
