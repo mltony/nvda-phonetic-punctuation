@@ -374,7 +374,6 @@ def computeCacheableStateAtEnd(fields):
 original_getTextInfoSpeech = None
 api.s = []
 api.b = []
-globalDbg = False
 def new_getTextInfoSpeech(
         info,
         useCache = True,
@@ -385,9 +384,7 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
-    global globalDbg
     if not isPhoneticPunctuationEnabled():
-        globalDbg = 'N' == info.text
         yield from original_getTextInfoSpeech(
             info,
             useCache ,
@@ -398,7 +395,6 @@ def new_getTextInfoSpeech(
             onlyInitialFields,
             suppressBlanks,
         )
-        globalDbg = False
         speakTextInfoState = speech.speech.SpeakTextInfoState(info.obj)
         controlFieldStackCache = speakTextInfoState.controlFieldStackCache
         api.s.append((info.text, controlFieldStackCache))
@@ -420,12 +416,7 @@ def new_getTextInfoSpeech(
     firstHeadingCommand = None
     fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
     fields = fakeTextInfo.fields
-    dbg = info.text == 'N'
-    if dbg:
-        tones.beep(500, 50)
-        api.ff = fields
 
-    
     #skip set contains indices where heading controls start and end.
     # We will filter them out before returning from this function as we don't want built-in NVDA logic to double-process headings.
     # They also serve as boundaries for other font attribute processing as typically text formatting changes when we enter/exit a heading.
@@ -568,11 +559,6 @@ def new_getTextInfoSpeech(
             # Interval
             i, j = item
             fakeTextInfo.setStartAndEnd(i, j)
-            if dbg:
-                log.warn(f"asdf {i,j=}")
-                api.fff = fakeTextInfo.getTextWithFields(formatConfig)
-                globalDbg = True
-                
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -583,9 +569,6 @@ def new_getTextInfoSpeech(
                 onlyInitialFields,
                 suppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks,
             ))
-            if dbg:
-                api.seq = sequence
-                globalDbg = False
             isBlank = isBlankSequence(sequence)
             if not isBlank:
                 isBlankSoFar = False
@@ -611,9 +594,6 @@ def new_getPropertiesSpeech(
 ):
     if not isPhoneticPunctuationEnabled():
         return original_getPropertiesSpeech(reason, **propertyValues)
-    if globalDbg:
-        #api.b.append(propertyValues)
-        pass
     if len(propertyValues) == 1:
         role = propertyValues.get('role', None)
         if role in roleRules and roleRules[role].enabled:
@@ -640,7 +620,7 @@ def new_getControlFieldSpeech(
     reason = None,
 ):
     result = original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
-    if False and not isPhoneticPunctuationEnabled():
+    if not isPhoneticPunctuationEnabled():
         return result
     result2 = []
     for i, utterance in enumerate(result):
@@ -691,8 +671,6 @@ def new_getControlFieldSpeech(
                     result2.append(restoredUtterance)
                     continue
         result2.append(utterance)
-    if globalDbg:
-        api.b.append((fieldType, result, result2))
     # Some logic downstream sometimes appears to filter out our earcons.
     # I could nevre have figured out where exactly this happens, but presumably somewhere in speech.speech.getTextInfoSpeech.
     # However adding an empty string somehow resolves this problem.
