@@ -183,7 +183,23 @@ class FakeTextInfo:
         self.info = info
         self.formatConfig = formatConfig.copy()
         self.preventSpellingCharacters = preventSpellingCharacters
-        self.fields = info.getTextWithFields(formatConfig)
+        fields = info.getTextWithFields(formatConfig)
+        if False:
+          for i in range(len(fields)):
+            field = fields[i]
+            # If we have a heading or a format change, we insert an empty string right before, so that "out of container" messages can be spoken before other formatting information
+            # this is disabled for now as it has too many side effects
+            if isinstance(field,textInfos.FieldCommand):
+                if (
+                    field.command == "formatChange"
+                    or (
+                        field.command == "controlStart"
+                        and field.field.get('role', None) == controlTypes.Role.HEADING
+                    )
+                ):
+                    fields.insert(i, " \n")
+                    break
+        self.fields = fields
     
     def setSkipSet(self, skipSet):
         self.skipSet = skipSet
@@ -359,7 +375,6 @@ original_getTextInfoSpeech = None
 api.s = []
 api.b = []
 globalDbg = False
-
 def new_getTextInfoSpeech(
         info,
         useCache = True,
@@ -370,7 +385,9 @@ def new_getTextInfoSpeech(
         onlyInitialFields = False,
         suppressBlanks = False
 ):
+    global globalDbg
     if not isPhoneticPunctuationEnabled():
+        globalDbg = 'N' == info.text
         yield from original_getTextInfoSpeech(
             info,
             useCache ,
@@ -381,6 +398,10 @@ def new_getTextInfoSpeech(
             onlyInitialFields,
             suppressBlanks,
         )
+        globalDbg = False
+        speakTextInfoState = speech.speech.SpeakTextInfoState(info.obj)
+        controlFieldStackCache = speakTextInfoState.controlFieldStackCache
+        api.s.append((info.text, controlFieldStackCache))
         return
     if True:
         # Computing formatConfig - identical to logic in the original function
@@ -399,6 +420,11 @@ def new_getTextInfoSpeech(
     firstHeadingCommand = None
     fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
     fields = fakeTextInfo.fields
+    dbg = info.text == 'N'
+    if dbg:
+        tones.beep(500, 50)
+        api.ff = fields
+
     
     #skip set contains indices where heading controls start and end.
     # We will filter them out before returning from this function as we don't want built-in NVDA logic to double-process headings.
@@ -542,6 +568,11 @@ def new_getTextInfoSpeech(
             # Interval
             i, j = item
             fakeTextInfo.setStartAndEnd(i, j)
+            if dbg:
+                log.warn(f"asdf {i,j=}")
+                api.fff = fakeTextInfo.getTextWithFields(formatConfig)
+                globalDbg = True
+                
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -552,6 +583,9 @@ def new_getTextInfoSpeech(
                 onlyInitialFields,
                 suppressBlanks=True if i < lastIntervalIndex or not isBlankSoFar else suppressBlanks,
             ))
+            if dbg:
+                api.seq = sequence
+                globalDbg = False
             isBlank = isBlankSequence(sequence)
             if not isBlank:
                 isBlankSoFar = False
@@ -562,6 +596,9 @@ def new_getTextInfoSpeech(
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
     result = [[item for subgroup in result for item in subgroup]]
+    speakTextInfoState = speech.speech.SpeakTextInfoState(info.obj)
+    controlFieldStackCache = speakTextInfoState.controlFieldStackCache
+    api.s.append((info.text, controlFieldStackCache))
     yield from result
 
 # some random funny Unicode characters
@@ -574,6 +611,9 @@ def new_getPropertiesSpeech(
 ):
     if not isPhoneticPunctuationEnabled():
         return original_getPropertiesSpeech(reason, **propertyValues)
+    if globalDbg:
+        #api.b.append(propertyValues)
+        pass
     if len(propertyValues) == 1:
         role = propertyValues.get('role', None)
         if role in roleRules and roleRules[role].enabled:
@@ -581,9 +621,6 @@ def new_getPropertiesSpeech(
         states = propertyValues.get('states', None)
             
     result =  original_getPropertiesSpeech(reason, **propertyValues)
-    if globalDbg:
-        #api.s.append(propertyValues)
-        api.s.append(result[:])
     if 'role' in propertyValues and len(propertyValues) == 1:
         # Only role text is requested. We need to mark it with signature, so that later we can tell whether we're jumping out of container.
         # We will strip off the signature downstream.
@@ -603,14 +640,8 @@ def new_getControlFieldSpeech(
     reason = None,
 ):
     result = original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
-    if not isPhoneticPunctuationEnabled():
+    if False and not isPhoneticPunctuationEnabled():
         return result
-    if 'editable' in str(result):
-        global globalDbg
-        api.s.append(result)
-        globalDbg = True
-        original_getControlFieldSpeech(attrs, ancestorAttrs, fieldType, formatConfig, extraDetail, reason)
-        globalDbg = False
     result2 = []
     for i, utterance in enumerate(result):
         if isinstance(utterance, str):
@@ -634,7 +665,6 @@ def new_getControlFieldSpeech(
                 # We have the string, but there are also some other extra characters present.
                 # We assume this says something like "Out of frame" - that is we are exiting a container.
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-                result[i] = "hahahaha"
                 oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
                 if oocRule is not None:
                     command = oocRule.getSpeechCommand()[0]
@@ -651,7 +681,6 @@ def new_getControlFieldSpeech(
                 # We have the string, but there are also some other extra characters present.
                 # We assume this says something like "Out of frame" - that is we are exiting a container.
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
-                result[i] = "hahahaha"
                 oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
                 if oocRule is not None:
                     command = oocRule.getSpeechCommand()[0]
@@ -662,6 +691,12 @@ def new_getControlFieldSpeech(
                     result2.append(restoredUtterance)
                     continue
         result2.append(utterance)
+    if globalDbg:
+        api.b.append((fieldType, result, result2))
+    # Some logic downstream sometimes appears to filter out our earcons.
+    # I could nevre have figured out where exactly this happens, but presumably somewhere in speech.speech.getTextInfoSpeech.
+    # However adding an empty string somehow resolves this problem.
+    result2.append("")
     return result2
 
 original_processAndLabelStates = None
