@@ -291,7 +291,7 @@ class AudioRuleDialog(wx.Dialog):
             self.patternTextCtrl.Disable()
             self.passThroughCheckBox.Disable()
             self.frenzyValueCategory.control.SetFocus()
-            self.suppressStateClutterCheckBox.Enable(self.frenzyType in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE])
+        self.suppressStateClutterCheckBox.Enable(self.frenzyType in [FrenzyType.STATE, FrenzyType.NEGATIVE_STATE])
 
 
     def getType(self):
