@@ -414,9 +414,10 @@ def new_getTextInfoSpeech(
         if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
             formatConfig["reportSpellingErrors"] = False
     headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
+    headingRule = formatRules.get(TextFormat.HEADING, None)
     fontSizeRule = numericFormatRules.get(NumericTextFormat.FONT_SIZE, None)
-    processHeadings = headingLevelRule is not None
-    firstHeadingCommand = None
+    processHeadings = headingLevelRule is not None or headingRule is not None
+    firstHeadingLevelCommand = None
     fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
     fields = fakeTextInfo.fields
 
@@ -457,29 +458,45 @@ def new_getTextInfoSpeech(
                 level = int(level)
             except (ValueError, TypeError):
                 continue
-            preCommand, postCommand = headingLevelRule.getNumericSpeechCommand(level)
-            if isinstance(preCommand, speech.commands.BaseProsodyCommand):
-                pass
-            elif isinstance(preCommand, str):
-                if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
-                    # Compare with cached heading level - we don't want to repeat heading level on every char or word move
-                    if cache.get('headingLevel', None) == level:
-                        continue
-                elif reason == OutputReason.QUICKNAV:
-                    # During quickNav speak Heading level at the end.
-                    preCommand, postCommand = postCommand, preCommand
-            else:
-                raise RuntimeError
-            if preCommand is not None:
-                if firstHeadingCommand is None:
-                    firstHeadingCommand = preCommand
-                newCommands[start].append(preCommand)
-            if postCommand is not None:
-                newCommands[end].append(postCommand)
+            if headingRule is not None:
+                preCommand, postCommand = headingRule.getSpeechCommand()
+                if isinstance(preCommand, str):
+                    if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
+                        # Compare with cached heading level - we don't want to repeat heading level on every char or word move
+                        if cache.get('headingLevel', None) == level:
+                            continue
+                    elif reason == OutputReason.QUICKNAV:
+                        # During quickNav speak Heading level at the end.
+                        preCommand, postCommand = postCommand, preCommand
+                if preCommand is not None:
+                    newCommands[start].append(preCommand)
+                if postCommand is not None:
+                    newCommands[end].append(postCommand)
+            if headingLevelRule is not None:
+                preCommand, postCommand = headingLevelRule.getNumericSpeechCommand(level)
+                if isinstance(preCommand, speech.commands.BaseProsodyCommand):
+                    pass
+                elif isinstance(preCommand, str):
+                    if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
+                        # Compare with cached heading level - we don't want to repeat heading level on every char or word move
+                        if cache.get('headingLevel', None) == level:
+                            continue
+                    elif reason == OutputReason.QUICKNAV:
+                        # During quickNav speak Heading level at the end.
+                        preCommand, postCommand = postCommand, preCommand
+                else:
+                    raise RuntimeError
+                if preCommand is not None:
+                    if firstHeadingLevelCommand is None:
+                        firstHeadingLevelCommand = preCommand
+                    newCommands[start].append(preCommand)
+                if postCommand is not None:
+                    newCommands[end].append(postCommand)
+
     if fontSizeRule is not None:
         samplePreCommand, samplePostCommand = fontSizeRule.getNumericSpeechCommand(10)
         # If configured to report heading levels and font size via same prosody  command, then skip headings to avoid interference
-        skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingCommand)
+        skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingLevelCommand)
         for begin, end in findAllFormatFieldBrackets(fields):
             if skipHeadingsForFontSize and any(headingStart < begin < headingEnd for headingStart, headingEnd in zip(headingStarts, headingEnds)):
                 continue

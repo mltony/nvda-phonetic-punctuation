@@ -65,12 +65,14 @@ class TextFormat(Enum):
     SUPERSCRIPT = 'superscript'
     SUBSCRIPT = 'subscript'
     HEADING = 'heading'
+    HIGHLIGHTED = 'highlighted'
 TEXT_FORMAT_NAMES = {
     TextFormat.BOLD: _('Bold'),
     TextFormat.ITALIC: _('Italic'),
     TextFormat.SUPERSCRIPT: _('Superscript'),
     TextFormat.SUBSCRIPT: _('Subscript'),
     TextFormat.HEADING: _('Heading'),
+    TextFormat.HIGHLIGHTED: _('Highlighted'),
 }
 
 class NumericTextFormat(Enum):
@@ -148,5 +150,4 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         #audioRuleProsody,
         audioRuleTextSubstitution,
     ],
-
 }

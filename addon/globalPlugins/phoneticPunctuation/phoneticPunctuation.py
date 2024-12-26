@@ -520,6 +520,10 @@ class AudioRule:
                 preCommand = classClass(multiplier=self.prosodyMultiplier)
             postCommand = classClass()
             return preCommand, postCommand
+        elif self.ruleType in [audioRuleTextSubstitution]:
+            if self.replacementPattern is None:
+                raise ValueError
+            return self.replacementPattern, None
         elif self.ruleType in [audioRuleTextSubstitution, audioRuleNumericProsody, audioRuleNoop]:
             return None, None
         else:
