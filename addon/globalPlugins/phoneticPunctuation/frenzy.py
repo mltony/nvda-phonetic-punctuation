@@ -325,12 +325,12 @@ def findControlEnd(fields, start):
     raise RuntimeError()
 
 
-def findAllHeadings(fields):
+def findAllControlFields(fields, role=controlTypes.Role.HEADING):
     for i, field in enumerate(fields):
         if isinstance(field,textInfos.FieldCommand):
             if field.command == "controlStart":
                 try:
-                    if field.field['role'] == controlTypes.Role.HEADING:
+                    if field.field['role'] == role:
                         yield i
                 except KeyError:
                     pass
@@ -374,7 +374,8 @@ def computeCacheableStateAtEnd(fields):
             headingLevel = field.field.get('level', None)
             if headingLevel is not None:
                 result['headingLevel'] = int(headingLevel)
-    
+        if field.field['role'] == controlTypes.Role.MARKED_CONTENT:
+            result['highlighted'] = True
     return result
 
 original_getTextInfoSpeech = None
@@ -416,6 +417,7 @@ def new_getTextInfoSpeech(
     headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
     headingRule = formatRules.get(TextFormat.HEADING, None)
     fontSizeRule = numericFormatRules.get(NumericTextFormat.FONT_SIZE, None)
+    highlightedRule = formatRules.get(TextFormat.HIGHLIGHTED, None)
     processHeadings = headingLevelRule is not None or headingRule is not None
     firstHeadingLevelCommand = None
     fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
@@ -436,7 +438,7 @@ def new_getTextInfoSpeech(
     except KeyError:
         pass
     if processHeadings:
-        headingStarts = list(findAllHeadings(fields))
+        headingStarts = list(findAllControlFields(fields))
         headingEnds = [findControlEnd(fields, headingSstart) for headingSstart in headingStarts]
         nHeadings = len(headingStarts)
         # Filter out nested headings.
@@ -489,6 +491,37 @@ def new_getTextInfoSpeech(
                 if preCommand is not None:
                     if firstHeadingLevelCommand is None:
                         firstHeadingLevelCommand = preCommand
+                    newCommands[start].append(preCommand)
+                if postCommand is not None:
+                    newCommands[end].append(postCommand)
+    if highlightedRule is not None:
+        highlightedStarts = list(findAllControlFields(fields, role=controlTypes.Role.MARKED_CONTENT))
+        highlightedEnds = [findControlEnd(fields, highlightedSstart) for highlightedSstart in highlightedStarts]
+        nHighlighteds = len(highlightedStarts)
+        # Filter out nested highlighteds.
+        # This has never been observed in real life.
+        lastHighlightedEnd = -1
+        nestedHighlightedIndices = set()
+        for i in range(nHighlighteds):
+            if highlightedStarts[i] < lastHighlightedEnd:
+                nestedHighlightedIndices.add(i)
+            lastHighlightedEnd = highlightedEnds[i]
+        skipSet.update(highlightedStarts)
+        skipSet.update(highlightedEnds)
+        for i, (start, end) in enumerate(zip(highlightedStarts, highlightedEnds)):
+            if i in nestedHighlightedIndices:
+                continue
+            if highlightedRule is not None:
+                preCommand, postCommand = highlightedRule.getSpeechCommand()
+                if isinstance(preCommand, str):
+                    if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
+                        # Compare with cached heading level - we don't want to repeat heading level on every char or word move
+                        if cache.get('highlighted', None) == True:
+                            continue
+                    elif reason == OutputReason.QUICKNAV:
+                        # During quickNav speak highlighted at the end.
+                        preCommand, postCommand = postCommand, preCommand
+                if preCommand is not None:
                     newCommands[start].append(preCommand)
                 if postCommand is not None:
                     newCommands[end].append(postCommand)
