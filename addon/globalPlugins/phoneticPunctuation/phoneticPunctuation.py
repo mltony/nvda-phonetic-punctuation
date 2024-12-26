@@ -748,6 +748,9 @@ def injectMonkeyPatches():
     global original_getIndentationSpeech
     original_getIndentationSpeech = speech.speech.getIndentationSpeech
     speech.speech.getIndentationSpeech = new_getIndentationSpeech
+    global original_getSelectionMessageSpeech
+    original_getSelectionMessageSpeech = speech.speech._getSelectionMessageSpeech
+    speech.speech._getSelectionMessageSpeech = new_getSelectionMessageSpeech
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -762,6 +765,7 @@ def  restoreMonkeyPatches():
     
     characterProcessing.processSpeechSymbol = original_processSpeechSymbol
     speech.speech.getIndentationSpeech = original_getIndentationSpeech
+    speech.speech._getSelectionMessageSpeech = original_getSelectionMessageSpeech
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -937,3 +941,17 @@ def new_getIndentationSpeech(indentation, formatConfig):
     if speak:
         indentSequence.extend(res)
     return indentSequence
+
+original_getSelectionMessageSpeech = None
+def new_getSelectionMessageSpeech(
+	message,
+	text,
+):
+    if isPhoneticPunctuationEnabled() and not isinstance(text, str):
+        # Assuming that str is an earcon rather than string
+        return [
+            message.replace('%s', ''),
+            text,
+        ]
+    return original_getSelectionMessageSpeech(message, text)
+
