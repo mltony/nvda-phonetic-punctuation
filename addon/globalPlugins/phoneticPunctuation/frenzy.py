@@ -185,7 +185,7 @@ def updateRules():
             negativeStateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
 
 class FakeTextInfo:
-    def __init__(self, info, formatConfig, preventSpellingCharacters):
+    def __init__(self, info, formatConfig, preventSpellingCharacters, addFakeEmptyText):
         self.info = info
         self.formatConfig = formatConfig.copy()
         self.preventSpellingCharacters = preventSpellingCharacters
@@ -205,6 +205,30 @@ class FakeTextInfo:
                 ):
                     fields.insert(i, " \n")
                     break
+        if addFakeEmptyText:
+            specialFormatIndices = [
+                i 
+                for i,field in enumerate(fields)
+                if
+                    isinstance(field,textInfos.FieldCommand)
+                    and field.command == "controlStart"
+                    and field.field.get('role', None) in [
+                        controlTypes.Role.HEADING,
+                        controlTypes.Role.MARKED_CONTENT,
+                    ]
+            ]
+            if len(specialFormatIndices) > 0:
+                index = specialFormatIndices[0]
+                strings = [
+                    field
+                    for i,field in enumerate(fields)
+                    if
+                        isinstance(field,str)
+                ]
+                if len(strings) > 0:
+                    firstString = strings[0]
+                    if m:=speech.speech.RE_INDENTATION_CONVERT.search(firstString):
+                        fields.insert(index, m.group() + "\n")
         self.fields = fields
     
     def setSkipSet(self, skipSet):
@@ -426,7 +450,7 @@ def new_getTextInfoSpeech(
         unit not in  [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]
         or len(info.text) != 1
     )
-    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=preventSpellingCharacters)
+    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=preventSpellingCharacters, addFakeEmptyText=preventSpellingCharacters)
     fields = fakeTextInfo.fields
 
     #skip set contains indices where heading controls start and end.
