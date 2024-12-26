@@ -85,10 +85,12 @@ NUMERIC_TEXT_FORMAT_NAMES = {
 class OtherRule(Enum):
     OUT_OF_CONTAINER = 'out_of_container'
     BLANK = "blank"
+    NO_INDENT = "no_indent"
 
 OTHER_RULE_NAMES = {
     OtherRule.OUT_OF_CONTAINER: _('Out of container'),
     OtherRule.BLANK: _('Blank announcement'),
+    OtherRule.NO_INDENT: _('No indent announcement'),
 }
 
 ALLOWED_TYPES_BY_FRENZY_TYPE = {

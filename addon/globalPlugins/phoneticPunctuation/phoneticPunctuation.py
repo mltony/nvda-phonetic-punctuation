@@ -903,10 +903,17 @@ def new_getIndentationSpeech(indentation, formatConfig):
         if toneIndentConfig:
             indentSequence.append(speech.commands.BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.IDT_TONE_DURATION))
         if speechIndentConfig:
-            indentSequence.append(
-                # Translators: This is spoken when the given line has no indentation.
-                _("no indent"),
-            )
+            # mltony change
+            noIndentRule = frenzy.otherRules.get(OtherRule.NO_INDENT, None)
+            if noIndentRule is not None:
+                indentSequence.append(
+                    noIndentRule.getSpeechCommand()[0]
+                )
+            else:
+                indentSequence.append(
+                    # Translators: This is spoken when the given line has no indentation.
+                    _("no indent"),
+                )
         return indentSequence
 
     # The non-breaking space is semantically a space, so we replace it here.
