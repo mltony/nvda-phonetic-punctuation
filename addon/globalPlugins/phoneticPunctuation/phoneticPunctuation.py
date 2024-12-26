@@ -892,12 +892,12 @@ def new_getIndentationSpeech(indentation, formatConfig):
             ReportLineIndentation.TONES,
             ReportLineIndentation.SPEECH_AND_TONES,
         )
-        and _speechState.speechMode == speech.speech.SpeechMode.talk
+        and speech.speech._speechState.speechMode == speech.speech.SpeechMode.talk
     )
     indentSequence = []
     if not indentation:
         if toneIndentConfig:
-            indentSequence.append(BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.IDT_TONE_DURATION))
+            indentSequence.append(speech.commands.BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.IDT_TONE_DURATION))
         if speechIndentConfig:
             indentSequence.append(
                 # Translators: This is spoken when the given line has no indentation.
@@ -930,7 +930,7 @@ def new_getIndentationSpeech(indentation, formatConfig):
     if toneIndentConfig:
         if quarterTones <= speech.speech.IDT_MAX_SPACES:
             pitch = speech.speech.IDT_BASE_FREQUENCY * 2 ** (quarterTones / 24.0)  # 24 quarter tones per octave.
-            indentSequence.append(BeepCommand(pitch, speech.speech.IDT_TONE_DURATION))
+            indentSequence.append(speech.commands.BeepCommand(pitch, speech.speech.IDT_TONE_DURATION))
         else:
             # we have more than 72 spaces (18 tabs), and must speak it since we don't want to hurt the users ears.
             speak = True
