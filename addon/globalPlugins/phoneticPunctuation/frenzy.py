@@ -255,7 +255,9 @@ class FakeTextInfo:
                 ):
                     del result[-1]
                 else:
-                        # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
+                    # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
+                    if self.preventSpellingCharacters and isinstance(field, str):
+                        field = field + '\n'
                     if False and self.preventSpellingCharacters and isinstance(field, str):
                         field = field + '\n'
                     if isinstance(field,textInfos.FieldCommand):
@@ -420,7 +422,11 @@ def new_getTextInfoSpeech(
     highlightedRule = formatRules.get(TextFormat.HIGHLIGHTED, None)
     processHeadings = headingLevelRule is not None or headingRule is not None
     firstHeadingLevelCommand = None
-    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=unit != textInfos.UNIT_CHARACTER)
+    preventSpellingCharacters = (
+        unit not in  [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]
+        or len(info.text) != 1
+    )
+    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=preventSpellingCharacters)
     fields = fakeTextInfo.fields
 
     #skip set contains indices where heading controls start and end.
@@ -559,7 +565,32 @@ def new_getTextInfoSpeech(
                 newCommands[begin].append(preCommand)
             if postCommand is not None:
                 newCommands[end].append(postCommand)
-
+    # italic and bold and stuff
+    for textFormatting in [
+        TextFormat.BOLD,
+        TextFormat.ITALIC,
+        TextFormat.UNDERLINE,
+        TextFormat.STRIKETHROUGH,
+    ]:
+        try:
+            fRule = formatRules[textFormatting]
+        except KeyError:
+            continue
+        for begin, end in findAllFormatFieldBrackets(fields):
+            value = fields[begin].field.get(textFormatting.value, None)
+            prevValue = newCache.get(textFormatting.value, None)
+            newCache[textFormatting.value] = value
+            if value:
+                preCommand, postCommand = fRule.getSpeechCommand()
+                if isinstance(preCommand, str):
+                    if True:
+                        # Compare with cached value
+                        if prevValue == value:
+                            continue
+                if preCommand is not None:
+                    newCommands[begin].append(preCommand)
+                if postCommand is not None:
+                    newCommands[end].append(postCommand)
     newCache.update(computeCacheableStateAtEnd(fields))
     info.obj.ppCache = newCache
     

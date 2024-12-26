@@ -339,7 +339,7 @@ class AudioRuleDialog(wx.Dialog):
             idx = list(NumericTextFormat).index(rule.getFrenzyValue())
         elif self.frenzyType        == FrenzyType.OTHER_RULE:
             idx = list(OtherRule).index(rule.getFrenzyValue())
-        elif self.frenzyType        == FrenzyType.TEXT:
+        elif self.frenzyType        in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
             pass
         else:
             raise ValueError

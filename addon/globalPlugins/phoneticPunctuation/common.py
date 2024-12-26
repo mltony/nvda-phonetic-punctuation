@@ -62,15 +62,16 @@ rulesDialogOpen = False
 class TextFormat(Enum):
     BOLD = 'bold'
     ITALIC = 'italic'
-    SUPERSCRIPT = 'superscript'
-    SUBSCRIPT = 'subscript'
+    UNDERLINE = 'underline'
+    STRIKETHROUGH = 'strikethrough'
     HEADING = 'heading'
     HIGHLIGHTED = 'highlighted'
+
 TEXT_FORMAT_NAMES = {
     TextFormat.BOLD: _('Bold'),
     TextFormat.ITALIC: _('Italic'),
-    TextFormat.SUPERSCRIPT: _('Superscript'),
-    TextFormat.SUBSCRIPT: _('Subscript'),
+    TextFormat.UNDERLINE: _('Underline'),
+    TextFormat.STRIKETHROUGH: _('Strikethrough'),
     TextFormat.HEADING: _('Heading'),
     TextFormat.HIGHLIGHTED: _('Highlighted'),
 }

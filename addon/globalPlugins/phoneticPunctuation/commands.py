@@ -170,4 +170,3 @@ class PpChainCommand(PpSynchronousCommand):
         for subcommand in self.subcommands:
             subcommand.terminate()
         currentChain = None
-

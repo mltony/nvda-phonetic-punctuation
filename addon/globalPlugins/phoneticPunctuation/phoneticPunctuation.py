@@ -425,7 +425,7 @@ class AudioRule:
         self.speechCommand, self.postSpeechCommand = self.getSpeechCommand()
 
     def getDisplayName(self):
-        if self.getFrenzyType() == FrenzyType.TEXT:
+        if self.getFrenzyType() in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
             return self.comment or self.pattern
         else:
             return f"{FRENZY_NAMES_SINGULAR[self.getFrenzyType()]}:{self.getFrenzyValueStr()}"
@@ -620,6 +620,7 @@ def reloadRules():
     characterRules = {
         rule.pattern: rule
         for rule in rulesByFrenzy[FrenzyType.CHARACTER]
+        if rule.enabled
     }
 
 def onPostNvdaStartup():
