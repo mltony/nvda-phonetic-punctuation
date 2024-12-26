@@ -96,7 +96,7 @@ class AudioRuleDialog(wx.Dialog):
                     pass
             self.possibleFrenzyValues = possibleFrenzyValues
             self.possibleFrenzyObjects = possibleFrenzyObjects
-        elif frenzyType        == FrenzyType.TEXT:
+        elif frenzyType        in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
             self.possibleFrenzyValues = []
         elif frenzyType        == FrenzyType.FORMAT:
             self.possibleFrenzyValues = [TEXT_FORMAT_NAMES[f] for f in TextFormat]
@@ -294,7 +294,7 @@ class AudioRuleDialog(wx.Dialog):
         self.Bind(wx.EVT_BUTTON,self.onOk,id=wx.ID_OK)
       # Touching up
         self.onType(None)
-        if self.frenzyType == FrenzyType.TEXT:
+        if self.frenzyType in [FrenzyType.TEXT, FrenzyType.CHARACTER]:
             self.frenzyValueCategory.control.Disable()
         else:
             self.patternTextCtrl.Disable()
@@ -418,6 +418,17 @@ class AudioRuleDialog(wx.Dialog):
                 )
                 self.urlRegexTextCtrl.SetFocus()
                 return
+        elif self.frenzyType == FrenzyType.CHARACTER:
+            if not self.patternTextCtrl.GetValue():
+                # Translators: This is an error message to let the user know that the pattern field is not valid.
+                gui.messageBox(_("A pattern is required."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.patternTextCtrl.SetFocus()
+                return
+            if len(self.patternTextCtrl.GetValue()) > 1:
+                gui.messageBox(_("Please enter a single character as pattern."), _("Dictionary Entry Error"), wx.OK|wx.ICON_WARNING, self)
+                self.patternTextCtrl.SetFocus()
+                return
+            frenzyValue = None
         else:
             frenzyValueStr = self.possibleFrenzyValues[self.frenzyValueCategory.control.GetSelection()]
             if self.frenzyType == FrenzyType.ROLE:

@@ -49,7 +49,8 @@ from .utils import *
 from .commands import *
 from . import commands
 from . import frenzy
-
+from config.configFlags import ReportLineIndentation
+import languageHandler
 defaultRules = """
 [
     {
@@ -476,7 +477,7 @@ class AudioRule:
             raise ValueError
 
     def getFrenzyValueStr(self):
-        if len(self.frenzyValue) == 0:
+        if self.frenzyValue is None or len(self.frenzyValue) == 0:
             return None
         type = self.getFrenzyType()
         s = self.frenzyValue
@@ -583,9 +584,10 @@ class AudioRule:
 
 
 rulesByFrenzy = None
+characterRules = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 def reloadRules():
-    global rulesByFrenzy
+    global rulesByFrenzy, characterRules
     try:
         rulesConfig = open(rulesFileName, "r").read()
     except FileNotFoundError:
@@ -611,6 +613,10 @@ def reloadRules():
     if len(errors) > 0:
         log.error(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
     frenzy.updateRules()
+    characterRules = {
+        rule.pattern: rule
+        for rule in rulesByFrenzy[FrenzyType.CHARACTER]
+    }
 
 def onPostNvdaStartup():
     if any([len(rule.urlRegex) > 0 for rule in rulesByFrenzy[FrenzyType.TEXT]]) and not isURLResolutionAvailable():
@@ -735,6 +741,13 @@ def injectMonkeyPatches():
     originalTonesInitialize = tones.initialize
     tones.initialize = preTonesInitialize
     frenzy.monkeyPatch()
+    
+    global original_processSpeechSymbol
+    original_processSpeechSymbol = characterProcessing.processSpeechSymbol
+    characterProcessing.processSpeechSymbol = new_processSpeechSymbol
+    global original_getIndentationSpeech
+    original_getIndentationSpeech = speech.speech.getIndentationSpeech
+    speech.speech.getIndentationSpeech = new_getIndentationSpeech
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -746,6 +759,9 @@ def  restoreMonkeyPatches():
     characterProcessing.processSpeechSymbols = originalProcessSpeechSymbols
     tones.initialize = originalTonesInitialize
     frenzy.monkeyUnpatch()
+    
+    characterProcessing.processSpeechSymbol = original_processSpeechSymbol
+    speech.speech.getIndentationSpeech = original_getIndentationSpeech
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -849,3 +865,75 @@ def fixProsodyCommands(sequence):
             # But we undo any prosody command that has not been properly closed.
             result.append(cls(offset=0))
     return result
+
+original_processSpeechSymbol = None
+def new_processSpeechSymbol(locale, symbol):
+    if isPhoneticPunctuationEnabled():
+        rule = characterRules.get(symbol, None)
+        if rule is not None:
+            return rule.getSpeechCommand()[0]
+    return original_processSpeechSymbol(locale, symbol)
+
+original_getIndentationSpeech = None
+def new_getIndentationSpeech(indentation, formatConfig):
+    """Retrieves the indentation speech sequence for a given string of indentation.
+    @param indentation: The string of indentation.
+    @param formatConfig: The configuration to use.
+    """
+    if not isPhoneticPunctuationEnabled():
+        return original_getIndentationSpeech(indentation, formatConfig)
+    speechIndentConfig = formatConfig["reportLineIndentation"] in (
+        ReportLineIndentation.SPEECH,
+        ReportLineIndentation.SPEECH_AND_TONES,
+    )
+    toneIndentConfig = (
+        formatConfig["reportLineIndentation"]
+        in (
+            ReportLineIndentation.TONES,
+            ReportLineIndentation.SPEECH_AND_TONES,
+        )
+        and _speechState.speechMode == speech.speech.SpeechMode.talk
+    )
+    indentSequence = []
+    if not indentation:
+        if toneIndentConfig:
+            indentSequence.append(BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.IDT_TONE_DURATION))
+        if speechIndentConfig:
+            indentSequence.append(
+                # Translators: This is spoken when the given line has no indentation.
+                _("no indent"),
+            )
+        return indentSequence
+
+    # The non-breaking space is semantically a space, so we replace it here.
+    indentation = indentation.replace("\xa0", " ")
+    res = []
+    locale = languageHandler.getLanguage()
+    quarterTones = 0
+    for m in speech.speech.RE_INDENTATION_CONVERT.finditer(indentation):
+        raw = m.group()
+        symbol = characterProcessing.processSpeechSymbol(locale, raw[0])
+        count = len(raw)
+        if symbol == raw[0]:
+            # There is no replacement for this character, so do nothing.
+            res.append(raw)
+        elif count == 1:
+            res.append(symbol)
+        else:
+            # @mltony Changed here: supporting earcons for symbols
+            #res.append("{count} {symbol}".format(count=count, symbol=symbol))
+            res.append(f"{count}")
+            res.append(symbol)
+        quarterTones += count * 4 if raw[0] == "\t" else count
+
+    speak = speechIndentConfig
+    if toneIndentConfig:
+        if quarterTones <= speech.speech.IDT_MAX_SPACES:
+            pitch = speech.speech.IDT_BASE_FREQUENCY * 2 ** (quarterTones / 24.0)  # 24 quarter tones per octave.
+            indentSequence.append(BeepCommand(pitch, speech.speech.IDT_TONE_DURATION))
+        else:
+            # we have more than 72 spaces (18 tabs), and must speak it since we don't want to hurt the users ears.
+            speak = True
+    if speak:
+        indentSequence.extend(res)
+    return indentSequence

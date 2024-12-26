@@ -603,9 +603,9 @@ def new_getTextInfoSpeech(
                     # only compare string commands
                     sequenceStrings = [s for ss in sequence for s in ss if isinstance(s, str)]
                     suppressedSequenceStrings = [s for ss in suppressedSequence for s in ss if isinstance(s, str)]
-                    if len(sequenceStrings) == 1 and len(suppressedSequenceStrings) == 0:
+                    if len(sequenceStrings) == 1 + len(suppressedSequenceStrings) and sequenceStrings[:-1] == suppressedSequenceStrings:
                         # Blank detected!
-                        blankString = sequenceStrings[0]
+                        blankString = sequenceStrings[-1]
                         blankCommand = blankRule.getSpeechCommand()[0]
                         for subsequence in sequence:
                             for i, command in enumerate(subsequence):

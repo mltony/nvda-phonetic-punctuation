@@ -26,6 +26,7 @@ audioRuleTypes = [
 
 class FrenzyType(Enum):
     TEXT = 'text'
+    CHARACTER = 'character'
     ROLE = 'role'
     STATE = 'state'
     NEGATIVE_STATE = 'negative_state'
@@ -36,6 +37,7 @@ class FrenzyType(Enum):
 
 FRENZY_NAMES = {
     FrenzyType.TEXT: "Text regular expressions",
+    FrenzyType.CHARACTER: "Characters",
     FrenzyType.ROLE: "Roles",
     FrenzyType.STATE: "States",
     FrenzyType.NEGATIVE_STATE: "Negative states",
@@ -46,6 +48,7 @@ FRENZY_NAMES = {
 
 FRENZY_NAMES_SINGULAR = {
     FrenzyType.TEXT: "Text regular expression pattern",
+    FrenzyType.CHARACTER: "Character",
     FrenzyType.ROLE: "Role",
     FrenzyType.STATE: "State",
     FrenzyType.NEGATIVE_STATE: "Negative state",
@@ -95,6 +98,12 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleBeep,
         audioRuleProsody,
         #audioRuleTextSubstitution,
+    ],
+    FrenzyType.CHARACTER: [
+        audioRuleBuiltInWave,
+        audioRuleWave,
+        audioRuleBeep,
+        audioRuleTextSubstitution,
     ],
     FrenzyType.ROLE: [
         audioRuleBuiltInWave,
