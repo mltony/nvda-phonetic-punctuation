@@ -75,8 +75,6 @@ def new_getObjectPropertiesSpeech(
             #allowedProperties['states']=False
             rule = roleRules[role]
             command = rule.getSpeechCommand()[0]
-            #api.z=command
-            #newCommands.append("hahaha")
             newCommands.append(command)
     newCommands.extend(
         original_getObjectPropertiesSpeech(
@@ -405,8 +403,6 @@ def computeCacheableStateAtEnd(fields):
     return result
 
 original_getTextInfoSpeech = None
-api.s = []
-api.b = []
 def new_getTextInfoSpeech(
         info,
         useCache = True,
@@ -554,12 +550,12 @@ def new_getTextInfoSpeech(
                 if preCommand is not None:
                     newCommands[start].append(preCommand)
                 if postCommand is not None:
-                    newCommands[end].append(postCommand)
+                    newCommands[end].insert(0, postCommand)
 
     if fontSizeRule is not None:
         samplePreCommand, samplePostCommand = fontSizeRule.getNumericSpeechCommand(10)
         # If configured to report heading levels and font size via same prosody  command, then skip headings to avoid interference
-        skipHeadingsForFontSize = processHeadings and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingLevelCommand)
+        skipHeadingsForFontSize = headingLevelRule is not None and isinstance(samplePreCommand, speech.commands.BaseProsodyCommand) and type(samplePreCommand) == type(firstHeadingLevelCommand)
         for begin, end in findAllFormatFieldBrackets(fields):
             if skipHeadingsForFontSize and any(headingStart < begin < headingEnd for headingStart, headingEnd in zip(headingStarts, headingEnds)):
                 continue
@@ -588,7 +584,7 @@ def new_getTextInfoSpeech(
             if preCommand is not None:
                 newCommands[begin].append(preCommand)
             if postCommand is not None:
-                newCommands[end].append(postCommand)
+                newCommands[end].insert(0, postCommand)
     # italic and bold and stuff
     for textFormatting in [
         TextFormat.BOLD,
@@ -614,7 +610,7 @@ def new_getTextInfoSpeech(
                 if preCommand is not None:
                     newCommands[begin].append(preCommand)
                 if postCommand is not None:
-                    newCommands[end].append(postCommand)
+                    newCommands[end].insert(0, postCommand)
     newCache.update(computeCacheableStateAtEnd(fields))
     info.obj.ppCache = newCache
     
@@ -755,7 +751,6 @@ def new_getPropertiesSpeech(
 PROPERTY_SPEECH_PATTERN = re.compile(f"{PROPERTY_SPEECH_SIGNATURE}(\w+){PROPERTY_SPEECH_SIGNATURE}")
 PROPERTY_SPEECH_PATTERN2 = re.compile(f"{PROPERTY_SPEECH_SIGNATURE2}(.+){PROPERTY_SPEECH_SIGNATURE2}")
 original_getControlFieldSpeech = None
-api.co = []
 def new_getControlFieldSpeech(
     attrs,
     ancestorAttrs,

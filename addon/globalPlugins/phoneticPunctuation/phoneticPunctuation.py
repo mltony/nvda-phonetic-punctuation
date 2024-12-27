@@ -542,7 +542,9 @@ class AudioRule:
             ):
                 raise ValueError
             numericValue = max(self.minNumericValue, min(self.maxNumericValue, numericValue))
-            offset = self.prosodyMinOffset + (self.prosodyMaxOffset - self.prosodyMinOffset) * (numericValue - self.minNumericValue) / (self.maxNumericValue - self.minNumericValue) or 0.001
+            offset = self.prosodyMinOffset + (self.prosodyMaxOffset - self.prosodyMinOffset) * (numericValue - self.minNumericValue) / (self.maxNumericValue - self.minNumericValue)
+            if offset == 0:
+                offset = 0.001
             preCommand = classClass(offset=offset)
             postCommand = classClass()
             return preCommand, postCommand
