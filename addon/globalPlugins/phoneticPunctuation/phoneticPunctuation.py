@@ -51,290 +51,7 @@ from . import commands
 from . import frenzy
 from config.configFlags import ReportLineIndentation
 import languageHandler
-defaultRules = """
-[
-    {
-        "builtInWavFile": "3d\\help.wav",
-        "caseSensitive": true,
-        "comment": "String too long, to prevent synth from hanging.",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "(?<=^.{5000}).+(?=.{100}$)",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\voice-mail.wav",
-        "caseSensitive": true,
-        "comment": "Timestamp 1: I0113 11:25:50.843000 52 file.py:63] Message",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 300,
-        "pattern": "^[A-Z][0-9.: ]+[-a-zA-Z0-9:._]+\\]",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\voice-mail.wav",
-        "caseSensitive": true,
-        "comment": "Timestamp 2: 2020-01-16 14:43:35,208 module.build INFO: Message, or without INFO",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 300,
-        "pattern": "^\\d\\d\\d\\d-\\d\\d-\\d\\d \\d\\d:\\d\\d:\\d\\d,\\d+ \\S+ (INFO|WARN|WARNING|DEBUG|ERROR)?:?",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\voice-mail.wav",
-        "caseSensitive": true,
-        "comment": "Timestamp 3: [16:09:16] Message",
-        "duration": null,
-        "enabled": true,
-        "endAdjustment": 300,
-        "pattern": "^\\[\\d\\d:\\d\\d:\\d\\d\\]",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": null,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\voice-mail.wav",
-        "caseSensitive": true,
-        "comment": "Timestamp 4: [INFO    ][2020-01-22 11:01:18,624][file.py:390  ] - message",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 300,
-        "pattern": "^\\[(INFO|DEBUG|WARN|WARNING|ERROR)\\s*\\]\\[[-0-9:, ]+\\]\\[[-a-zA-Z0-9.:_ ]+\\][- ]*",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\item.wav",
-        "caseSensitive": false,
-        "comment": "",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 100,
-        "pattern": "!",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "classic\\ask-short-question.wav",
-        "caseSensitive": true,
-        "comment": "",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 300,
-        "pattern": "@",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "punctuation\\Backslash.wav",
-        "caseSensitive": true,
-        "comment": "\",
-        "duration": 361,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\\\",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ".\\Backslash.wav"
-    },
-    {
-        "builtInWavFile": "punctuation\\LeftParen.wav",
-        "caseSensitive": true,
-        "comment": "(",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\(",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "punctuation\\RightParen.wav",
-        "caseSensitive": true,
-        "comment": ")",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\)",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "punctuation\\LeftBracket.wav",
-        "caseSensitive": true,
-        "comment": "[",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\[",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": "H:\\Downloads\\PhonPuncTest2\\LeftBracket-.wav"
-    },
-    {
-        "builtInWavFile": "punctuation\\RightBracket.wav",
-        "caseSensitive": true,
-        "comment": "]",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\]",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": "H:\\Downloads\\PhonPuncTest2\\RightBracket-.wav"
-    },
-    {
-        "builtInWavFile": "3d\\ellipses.wav",
-        "caseSensitive": false,
-        "comment": "...",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\.{3,}",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "chimes\\close-object.wav",
-        "caseSensitive": true,
-        "comment": ".",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 50,
-        "pattern": "\\.(?!\\d)",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "chimes\\delete-object.wav",
-        "caseSensitive": false,
-        "comment": "",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 100,
-        "pattern": ",",
-        "ruleType": "builtInWave",
-        "startAdjustment": 5,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "chimes\\yank-object.wav",
-        "caseSensitive": false,
-        "comment": "?",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\?",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "3d\\window-resize.wav",
-        "caseSensitive": true,
-        "comment": "",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "^blank$",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "punctuation\\LeftBrace.wav",
-        "caseSensitive": true,
-        "comment": "{",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\{",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "punctuation\\RightBrace.wav",
-        "caseSensitive": true,
-        "comment": "}",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "\\}",
-        "ruleType": "builtInWave",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "",
-        "caseSensitive": true,
-        "comment": "Capital",
-        "duration": 50,
-        "enabled": false,
-        "endAdjustment": 0,
-        "pattern": "(\\b|(?<=[_a-z]))[A-Z][a-z]+(\\b|(?=[_A-Z]))",
-        "prosodyMultiplier": null,
-        "prosodyName": "Pitch",
-        "prosodyOffset": 10,
-        "ruleType": "prosody",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    },
-    {
-        "builtInWavFile": "",
-        "caseSensitive": true,
-        "comment": "ALL_CAPITAL",
-        "duration": 50,
-        "enabled": true,
-        "endAdjustment": 0,
-        "pattern": "(\\b|(?<=[_a-z]))[A-Z]{2,}(\\b|(?=_)|(?=[A-Z][a-z]))",
-        "prosodyMultiplier": null,
-        "prosodyName": "Pitch",
-        "prosodyOffset": 20,
-        "ruleType": "prosody",
-        "startAdjustment": 0,
-        "tone": 500,
-        "wavFile": ""
-    }
-]
-""".replace("\\", "\\\\")
-
+import shutil
 
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
@@ -593,19 +310,32 @@ rulesByFrenzy = None
 characterRules = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "earconsAndSpeechRules.json")
 ppRulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
-rulesFileName = ppRulesFileName
+defaultRulesFileName = os.path.join(os.path.dirname(__file__), "defaultEarconsAndSpeechRules.json")
 def reloadRules():
     global rulesByFrenzy, characterRules
-    try:
-        rulesConfig = open(rulesFileName, "r").read()
-    except FileNotFoundError:
-        rulesConfig = defaultRules
-    mylog("Loading rules:")
-    if len(rulesConfig) == 0:
-        mylog("No rules config found, using default one.")
-        rulesConfig = defaultRules
-    mylog(rulesConfig)
-    
+    initialAttempt = rulesByFrenzy == None
+    if initialAttempt and not os.path.exists(rulesFileName):
+        # 1. Check if phonetic punctuation rules file exists - if so - then we must have just updated.
+        # In this case, migrate from pp and show a dialog box.
+        # or, alternatively:
+        # 2. copy default rules file.
+        if os.path.exists(ppRulesFileName):
+            shutil.copy(ppRulesFileName, rulesFileName)
+            os.replace(ppRulesFileName, ppRulesFileName + ".bak")
+            wx.CallAfter(
+                gui.messageBox,
+                _(
+                    "Phonetic punctuation add-on has been renamed to Earcons and Speech Rules.\n"
+                    "We have automatically migrated all your phonetic punctuation rules to Earcons and Speech Rules add-on, so no further action is required.\n"
+                    "Please feel free to explore add-on settings to discover new features.\n"
+                ),
+                _("Earcons and Speech Rules add-on"),
+                wx.OK|wx.ICON_INFORMATION,
+            )
+        else:
+            shutil.copy(defaultRulesFileName, rulesFileName)
+        
+    rulesConfig = open(rulesFileName, "r").read()
     rulesByFrenzy = {
         frenzy: []
         for frenzy in FrenzyType
