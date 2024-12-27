@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-#A part of the Phonetic Punctuation addon for NVDA
+#A part of the Earcons and Speech Rules addon for NVDA
 #Copyright (C) 2019-2022 Tony Malykh
 #This file is covered by the GNU General Public License.
 #See the file COPYING.txt for more details.
@@ -699,7 +699,7 @@ class AudioRuleDialog(wx.Dialog):
 
 class RulesDialog(SettingsPanel):
     # Translators: Title for the settings dialog
-    title = _("Phonetic Punctuation  rules")
+    title = _("Earcons and Speech Rules")
 
     def makeSettings(self, settingsSizer):
         common.rulesDialogOpen = True

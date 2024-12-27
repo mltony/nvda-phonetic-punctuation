@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-#A part of the Phonetic Punctuation addon for NVDA
+#A part of the Earcons and Speech rules addon for NVDA
 #Copyright (C) 2019-2022 Tony Malykh
 #This file is covered by the GNU General Public License.
 #See the file COPYING.txt for more details.
@@ -589,7 +589,9 @@ class AudioRule:
 
 rulesByFrenzy = None
 characterRules = None
-rulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
+rulesFileName = os.path.join(globalVars.appArgs.configPath, "earconsAndSpeechRules.json")
+ppRulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
+rulesFileName = ppRulesFileName
 def reloadRules():
     global rulesByFrenzy, characterRules
     try:
@@ -729,7 +731,7 @@ def preTonesInitialize(*args, **kwargs):
     try:
         reloadRules()
     except Exception as e:
-        log.error("Error while reloading phonetic punctuation rules", e)
+        log.error("Error while reloading Earcons and Speech Rules", e)
     return result
 
 def injectMonkeyPatches():
@@ -851,13 +853,13 @@ def fixProsodyCommands(sequence):
         if isinstance(command, speech.commands.BaseProsodyCommand):
             cls = type(command)
             if command._multiplier != 1:
-                log.error("Multiplicative prosody commands detected. This is not supported by phonetic punctuation add-on.")
+                log.error("Multiplicative prosody commands detected. This is not supported by Earcons and Speech Rules add-on.")
                 return sequence
             commandOffset = command._offset
             if commandOffset == 0:
                 # stack pop
                 if len(prosodyStacks[cls]) == 0:
-                    log.error("Stack underflow during fixProsodyCommands in phonetic punctuation add-on.")
+                    log.error("Stack underflow during fixProsodyCommands in Earcons and Speech Rules add-on.")
                     return sequence
                 prosodyOffsets[cls] = prosodyStacks[cls][-1]
                 del prosodyStacks[cls][-1]

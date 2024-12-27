@@ -1,5 +1,5 @@
 # -*- coding: UTF-8 -*-
-#A part of the Phonetic Punctuation addon for NVDA
+#A part of the Earcons and Speech Rules addon for NVDA
 #Copyright (C) 2019-2022 Tony Malykh
 #This file is covered by the GNU General Public License.
 #See the file COPYING.txt for more details.
@@ -51,7 +51,7 @@ pp.reloadRules()
 addonHandler.initTranslation()
 
 class GlobalPlugin(globalPluginHandler.GlobalPlugin):
-    scriptCategory = _("Phonetic Punctuation")
+    scriptCategory = _("Earcons and Speech Rules")
 
     def __init__(self, *args, **kwargs):
         super(GlobalPlugin, self).__init__(*args, **kwargs)
@@ -71,15 +71,15 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def  restoreMonkeyPatches(self):
         pp.restoreMonkeyPatches()
 
-    @script(description='Toggle phonetic punctuation.', gestures=['kb:NVDA+Alt+p'])
+    @script(description='Toggle Earcons and Speech Rules.', gestures=['kb:NVDA+Alt+p'])
     def script_togglePp(self, gesture):
         enabled = utils.getConfig("enabled")
         enabled = not enabled
         utils.setConfig("enabled", enabled)
         if enabled:
-            msg = _("Phonetic punctuation on")
+            msg = _("Earcons and Speech Rules on")
         else:
-            msg = _("Phonetic punctuation off")
+            msg = _("Earcons and Speech Rules off")
         ui.message(msg)
 
     @script(description='Toggle state verbosity reporting.', gestures=['kb:NVDA+Alt+['])
