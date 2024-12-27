@@ -15,13 +15,14 @@ addon_info = {
     "addon_name": "phoneticPunctuation",
     # Add-on summary, usually the user visible name of the addon.
     # Translators: Summary for this add-on to be shown on installation and add-on information.
-    "addon_summary": _("Phonetic Punctuation"),
+    "addon_summary": _("Earcons and speech rules"),
     # Add-on description
     # Translators: Long description to be shown for this add-on on add-on information from add-ons manager
-    "addon_description": _("""Phonetic punctuation add-on.
-Allows to replace punctuation marks in speech, along with any regular expression patterns with customizable auditory icons. """),
+    "addon_description": _("""Earcons and speech rules add-on (previously known as phonetic punctuation).
+Allows to set up earcons for words, characters, roles, states, formatting information.
+Please check out documentation for the full list of available speech rules."""),
     # version
-    "addon_version": "2.1",
+    "addon_version": "2.1.1",
     # Author(s)
     "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
     # URL for the add-on documentation support
