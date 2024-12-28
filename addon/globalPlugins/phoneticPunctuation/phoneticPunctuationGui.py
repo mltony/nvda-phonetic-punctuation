@@ -753,6 +753,7 @@ class RulesDialog(SettingsPanel):
         self.removeButton = bHelper.addButton(self, label=_("Re&move rule"))
         self.removeButton.Bind(wx.EVT_BUTTON, self.OnRemoveClick)
 
+
         self.applicationsBlacklistEdit = sHelper.addLabeledControl(_("Disable PhoneticPuntuation in applications (comma-separated list)"), wx.TextCtrl)
         self.applicationsBlacklistEdit.Value = getConfig("applicationsBlacklist")
 
@@ -822,7 +823,7 @@ class RulesDialog(SettingsPanel):
             return
         index=self.rulesList.GetFirstSelected()
         self.frenzyRules[index].enabled = not self.frenzyRules[index].enabled
-        if self.frenzyRrules[index].enabled:
+        if self.frenzyRules[index].enabled:
             msg = _("Rule enabled")
         else:
             msg = _("Rule disabled")
