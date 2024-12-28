@@ -446,7 +446,7 @@ def new_getTextInfoSpeech(
         unit not in  [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]
         or len(info.text) != 1
     )
-    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=preventSpellingCharacters, addFakeEmptyText=preventSpellingCharacters)
+    fakeTextInfo  = FakeTextInfo(info, formatConfig, preventSpellingCharacters=preventSpellingCharacters, addFakeEmptyText=False)
     fields = fakeTextInfo.fields
 
     #skip set contains indices where heading controls start and end.

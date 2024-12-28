@@ -96,6 +96,12 @@ You can disable Earcons and Speech Rules in certain applications.  This is a com
 If you are not sure what should be the name of your application, switch to that application, Press NVDA+Control+Z to open up NVDA console and type: "focus.appModule.appName" without quotes to obtain the name of current application.
 Example list: slack,discord
 
+
+## Known issues and limitations
+
+* Sometimes "out of container" earcons are played out of order, e.g. after headingand not before.
+* Roles, states and text formatting rules don't work in sayAll mode.
+
 ## Copyright notice
 
 * Earcons in 3d, chimes, classic and pan-chimes categories were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
