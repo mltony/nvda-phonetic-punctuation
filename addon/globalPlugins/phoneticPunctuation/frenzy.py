@@ -349,6 +349,8 @@ def findAllFormatFieldBrackets(fields):
                 currentStartIndex = None
             if field.command == "formatChange":
                 currentStartIndex = i
+    if currentStartIndex is not None:
+        yield (currentStartIndex, len(fields))
 
 def isBlankSequence(sequence):
     for grouping  in sequence:
@@ -601,7 +603,10 @@ def new_getTextInfoSpeech(
     intervalsAndCommands = []
     nIntervals = 0
     emptyIntervals = set()
-    for i in sorted(newCommands.keys()) + [nFields]:
+    newCommandKeys = sorted(newCommands.keys())
+    if nFields not in newCommandKeys:
+        newCommandKeys.append(nFields)
+    for i in newCommandKeys:
         intervalsAndCommands.append((previousIndex, i))
         nIntervals += 1
         # If there are no str fields in this range, skip it, otherwise it'll believe we exited some controls and store that in the cache.
