@@ -100,11 +100,16 @@ Example list: slack,discord
 ## Known issues and limitations
 
 * Sometimes "out of container" earcons are played out of order, e.g. after headingand not before.
+    * This is caused by the fact that we process headings separately, and then is issue separate `speech.getTextInfoSpeech()` commands for each chunk between headings. The interplay of computing "out of container messages with the fact that we surgically remove headings from textInfo fields, creates enormous amount of complexity.
 * Roles, states and text formatting rules don't work in sayAll mode.
+    * For some reason in sayAll mode some pitch commands are reshuffled. I don't fully understand the root cause of this. But this causes a buffer underflow downstream. I consider this low priority for now.
+* Change of formatting within a link causes the earcon for link to be played for every format change.
+    * There is a weird clause `if not extraDetail:` inside `def getTextInfoSpeech` that makes it to repeat link message every time, but not in `extraDetail` mode (which is enabled when navigating by word or character). I don't understand why this clause is there, but it's too hard to work around this without causing more side effects.
 
 ## Copyright notice
 
 * Earcons in 3d, chimes, classic and pan-chimes categories were designed by T.V. Raman and are a part of emacspeak. For more information, see: https://github.com/tvraman/emacspeak/ .
 * Earcons in the punctuation category were designed by Kara Goldfinch.
 * Earcons in the roles category were designed by the authors of Unspoken add-on.
+
 
