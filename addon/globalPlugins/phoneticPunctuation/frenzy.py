@@ -192,21 +192,6 @@ class FakeTextInfo:
         self.formatConfig = formatConfig.copy()
         self.preventSpellingCharacters = preventSpellingCharacters
         fields = info.getTextWithFields(formatConfig)
-        if False:
-          for i in range(len(fields)):
-            field = fields[i]
-            # If we have a heading or a format change, we insert an empty string right before, so that "out of container" messages can be spoken before other formatting information
-            # this is disabled for now as it has too many side effects
-            if isinstance(field,textInfos.FieldCommand):
-                if (
-                    field.command == "formatChange"
-                    or (
-                        field.command == "controlStart"
-                        and field.field.get('role', None) == controlTypes.Role.HEADING
-                    )
-                ):
-                    fields.insert(i, " \n")
-                    break
         if addFakeEmptyText:
             specialFormatIndices = [
                 i 
@@ -284,14 +269,6 @@ class FakeTextInfo:
                     # In order to avoid single spaces being spoken in a longer line when speaking by word, line or paragraph, augment them with another character to avoid spelling symbol names.
                     if self.preventSpellingCharacters and isinstance(field, str):
                         field = field + '\n'
-                    if False and self.preventSpellingCharacters and isinstance(field, str):
-                        field = field + '\n'
-                    if isinstance(field,textInfos.FieldCommand):
-                        if field.command == "controlStart":
-                            if field.field['role'] == controlTypes.Role.EDITABLETEXT:
-                                #field.field['role'] = controlTypes.Role.UNKNOWN
-                                pass
-                                
                     result.append(field)
         result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
         return result
@@ -358,7 +335,7 @@ def findAllControlFields(fields, role=controlTypes.Role.HEADING):
         if isinstance(field,textInfos.FieldCommand):
             if field.command == "controlStart":
                 try:
-                    if field.field['role'] == role:
+                    if field.field.get('role', None) == role:
                         yield i
                 except KeyError:
                     pass
@@ -398,11 +375,11 @@ def computeCacheableStateAtEnd(fields):
     stack = computeStackAtIndex(fields, lastIndex)
     result = {}
     for field in stack:
-        if field.field['role'] == controlTypes.Role.HEADING:
+        if field.field.get('role', None) == controlTypes.Role.HEADING:
             headingLevel = field.field.get('level', None)
             if headingLevel is not None:
                 result['headingLevel'] = int(headingLevel)
-        if field.field['role'] == controlTypes.Role.MARKED_CONTENT:
+        if field.field.get('role', None) == controlTypes.Role.MARKED_CONTENT:
             result['highlighted'] = True
     return result
 
