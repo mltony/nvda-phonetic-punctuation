@@ -165,6 +165,8 @@ def updateRules():
     verbose = utils.getConfig("stateVerbose")
     stateDict = {}
     for rule in pp.rulesByFrenzy[FrenzyType.STATE]:
+        if not rule.enabled:
+            continue
         if                  not verbose and rule.suppressStateClutter:
             stateDict[rule.getFrenzyValue()] = ""
         elif rule.ruleType == audioRuleNoop:
@@ -174,6 +176,8 @@ def updateRules():
             stateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
     negativeStateDict = {}
     for rule in pp.rulesByFrenzy[FrenzyType.NEGATIVE_STATE]:
+        if not rule.enabled:
+            continue
         if                  not verbose and rule.suppressStateClutter:
             negativeStateDict[rule.getFrenzyValue()] = ""
         elif rule.ruleType == audioRuleNoop:
