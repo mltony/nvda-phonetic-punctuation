@@ -812,7 +812,7 @@ class RulesDialog(SettingsPanel):
         if self.rulesList.GetSelectedItemCount()!=1:
             return
         index=self.rulesList.GetFirstSelected()
-        rule = self.allRules[index]
+        rule = self.frenzyRules[index]
         if rule.enabled:
             self.toggleButton.SetLabel(_("Disable (&toggle)"))
         else:
