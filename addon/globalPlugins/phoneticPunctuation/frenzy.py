@@ -231,6 +231,11 @@ class FakeTextInfo:
             self.formatConfig["reportLineIndentation"] = formatConfig["reportLineIndentation"]
         except KeyError:
             pass
+        # Also in MSWord in Legacy non-UIA mode somehow 'autoLanguageSwitching' gets changed, so tweaking it as well
+        try:
+            self.formatConfig ["autoLanguageSwitching"] = formatConfig["autoLanguageSwitching"]
+        except KeyError:
+            pass
         if formatConfig != self.formatConfig:
             raise ValueError
         stack = []
