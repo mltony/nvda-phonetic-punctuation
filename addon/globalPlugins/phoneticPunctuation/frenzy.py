@@ -275,7 +275,17 @@ class FakeTextInfo:
                     if self.preventSpellingCharacters and isinstance(field, str):
                         field = field + '\n'
                     result.append(field)
-        result += [textInfos.FieldCommand("controlEnd", field=None)] * controlStackDepth
+        for i in range(controlStackDepth):
+            # If we are just closing the previous controlStart without any content - drop that controlStart instead
+            if (
+                len(result) > 0
+                and isinstance(result[-1], textInfos.FieldCommand)
+                and isinstance(field,textInfos.FieldCommand)
+                and result[-1].command == "controlStart"
+            ):
+                del result[-1]
+            else:
+                result.append(textInfos.FieldCommand("controlEnd", field=None))
         return result
     
     def getControlFieldSpeech(
