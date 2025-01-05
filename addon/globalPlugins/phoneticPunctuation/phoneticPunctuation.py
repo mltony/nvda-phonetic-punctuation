@@ -226,9 +226,7 @@ class AudioRule:
         elif self.ruleType == audioRuleBeep:
             return PpBeepCommand(self.tone, self.duration, left=self.volume, right=self.volume), None
         elif self.ruleType == audioRuleProsody:
-            className = self.prosodyName
-            className = className[0].upper() + className[1:] + 'Command'
-            classClass = getattr(speech.commands, className)
+            classClass = getProsodyClass(self.prosodyName)
             if self.prosodyOffset is not None:
                 # We shouldn't set offset to zero because it means restore defaults and confuses our nested prosody commands algorithm.
                 offset = self.prosodyOffset or 0.001
@@ -308,11 +306,12 @@ class AudioRule:
 
 rulesByFrenzy = None
 characterRules = None
+allProsodies = None
 rulesFileName = os.path.join(globalVars.appArgs.configPath, "earconsAndSpeechRules.json")
 ppRulesFileName = os.path.join(globalVars.appArgs.configPath, "phoneticPunctuationRules.json")
 defaultRulesFileName = os.path.join(os.path.dirname(__file__), "defaultEarconsAndSpeechRules.json")
 def reloadRules():
-    global rulesByFrenzy, characterRules
+    global rulesByFrenzy, characterRules, allProsodies
     initialAttempt = rulesByFrenzy == None
     if initialAttempt and not os.path.exists(rulesFileName):
         # 1. Check if phonetic punctuation rules file exists - if so - then we must have just updated.
@@ -340,6 +339,7 @@ def reloadRules():
         frenzy: []
         for frenzy in FrenzyType
     }
+    allProsodies = set()
     errors = []
     for ruleDict in json.loads(rulesConfig):
         try:
@@ -348,8 +348,10 @@ def reloadRules():
             errors.append(e)
         else:
             rulesByFrenzy[rule.getFrenzyType()].append(rule)
+            if rule.enabled and rule.ruleType == audioRuleProsody:
+                allProsodies.add(rule.prosodyName)
     if len(errors) > 0:
-        log.error(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
+        log.exception(f"Failed to load {len(errors)} audio rules; last exception:", errors[-1])
     frenzy.updateRules()
     characterRules = {
         rule.pattern: rule
@@ -537,6 +539,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
     newSequence = unmaskMaskedStrings(newSequence)
     newSequence = fixProsodyCommands(newSequence)
+    newSequence = resetProsodies(newSequence)
     return newSequence
 
 def eloquenceFix(speechSequence, language, symbolLevel):
@@ -608,6 +611,20 @@ def fixProsodyCommands(sequence):
             # But we undo any prosody command that has not been properly closed.
             result.append(cls(offset=0))
     return result
+    
+def resetProsodies(sequence):
+    """
+    Resetting all prosodies at the beginning of each utterance so that previous speech doesn't affect this utterance.
+    Here is the explanation as to why this is needed:
+    If we alter a prosody, we typically also insert another command to reset that prosody back.
+    However, sometimes user would cancel speech before the second prosody command has reached the synth.
+    We don't want prosody to stay altered and affect the next utterance.
+    NVDA appears to have some kind of logic to reset prosody, but it is unreliable and I ddin't track it down.
+    So doing a poor man's prosody reset here.
+    """
+    if len(allProsodies) == 0:
+        return sequence
+    return [getProsodyClass(prosodyName)() for prosodyName in allProsodies] + sequence
 
 original_processSpeechSymbol = None
 def new_processSpeechSymbol(locale, symbol):

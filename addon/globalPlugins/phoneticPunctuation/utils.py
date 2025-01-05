@@ -41,6 +41,7 @@ import ui
 import wave
 import wx
 from . import common
+import speech
 
 debug = False
 if debug:
@@ -158,3 +159,9 @@ def getCurrentContext():
     except AttributeError:
         windowTitle = ""
     return appName, windowTitle, url
+
+def getProsodyClass(prosodyName):
+    className = prosodyName
+    className = className[0].upper() + className[1:] + 'Command'
+    classClass = getattr(speech.commands, className)
+    return classClass
