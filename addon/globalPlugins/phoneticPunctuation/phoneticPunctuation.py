@@ -520,22 +520,43 @@ def processRule(speechSequence, rule, symbolLevel):
     return newSequence
 
 def postProcessSynchronousCommands(speechSequence, symbolLevel):
+    """
+    This function groups together adjacent earcons.
+    For some reason if we issue multiple adjacent wave commands, then either some of them don't get triggered at all,
+    or there are extra silence in between.
+    To work around that we replace adjacent earcons with a single PPChainCommand,
+    that is clever enough to play all earcons with the right timing.
+    Then we apply some more tweaks to fix other glitches.
+    We also connect earcons separated by some meaningless commands together into a single chain.
+    Examples of meaningless commands are LangChain commands or empty strings.
+    """
     language=speech.getCurrentLanguage()
-    speechSequence = [
-        element 
-        for element in speechSequence
-        if not isinstance(element, str)
-        or not speech.isBlank(speech.processText(language,element,symbolLevel))
-    ]
+    def isEmptyString(command):
+        return isinstance(command, str) and speech.isBlank(speech.processText(language,command,symbolLevel))
     newSequence = []
-    for (isSynchronous, values) in itertools.groupby(speechSequence, key=lambda x: isinstance(x, PpSynchronousCommand)):
-        if isSynchronous:
-            chain = PpChainCommand(list(values))
-            duration = chain.getDuration()
-            newSequence.append(chain)
+    excludeIndices = set()
+    for i, command in enumerate(speechSequence):
+        if i in excludeIndices:
+            continue
+        if isinstance(command, PpSynchronousCommand):
+            chain = [command]
+            for j in range(i+1, len(speechSequence)):
+                cj = speechSequence[j]
+                if isinstance(cj, PpSynchronousCommand):
+                    chain.append(cj)
+                    excludeIndices.add(j)
+                elif isEmptyString(cj):
+                    excludeIndices.add(j)
+                elif isinstance(cj, speech.commands.LangChangeCommand):
+                    pass
+                else:
+                    break
+            chainCommand = PpChainCommand(chain)
+            duration = chainCommand.getDuration()
+            newSequence.append(chainCommand)
             newSequence.append(speech.commands.BreakCommand(duration))
-        else:
-            newSequence.extend(values)
+        elif not isEmptyString(command):
+            newSequence.append(command)
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
     newSequence = unmaskMaskedStrings(newSequence)
     newSequence = fixProsodyCommands(newSequence)
