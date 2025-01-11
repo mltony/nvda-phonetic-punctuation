@@ -74,7 +74,7 @@ def new_getObjectPropertiesSpeech(
             patchedAllowedProperties['role']=False
             #allowedProperties['states']=False
             rule = roleRules[role]
-            command = rule.getSpeechCommand()[0]
+            command = rule.speechCommand
             newCommands.append(command)
     newCommands.extend(
         original_getObjectPropertiesSpeech(
@@ -173,7 +173,7 @@ def updateRules():
             # Don't set any value - NVDA will default to builtin state announcement
             continue
         else:
-            stateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
+            stateDict[rule.getFrenzyValue()] = rule.speechCommand
     negativeStateDict = {}
     for rule in pp.rulesByFrenzy[FrenzyType.NEGATIVE_STATE]:
         if not rule.enabled:
@@ -184,7 +184,7 @@ def updateRules():
             # Don't set any value - NVDA will default to builtin state announcement
             continue
         else:
-            negativeStateDict[rule.getFrenzyValue()] = rule.getSpeechCommand()[0]
+            negativeStateDict[rule.getFrenzyValue()] = rule.speechCommand
 
 class FakeTextInfo:
     def __init__(self, info, formatConfig, preventSpellingCharacters, addFakeEmptyText):
@@ -485,7 +485,7 @@ def new_getTextInfoSpeech(
             except (ValueError, TypeError):
                 continue
             if headingRule is not None:
-                preCommand, postCommand = headingRule.getSpeechCommand()
+                preCommand, postCommand = headingRule.speechCommand, headingRule.postSpeechCommand
                 if isinstance(preCommand, str):
                     if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
                         # Compare with cached heading level - we don't want to repeat heading level on every char or word move
@@ -536,7 +536,7 @@ def new_getTextInfoSpeech(
             if i in nestedHighlightedIndices:
                 continue
             if highlightedRule is not None:
-                preCommand, postCommand = highlightedRule.getSpeechCommand()
+                preCommand, postCommand = highlightedRule.speechCommand, highlightedRule.postSpeechCommand
                 if isinstance(preCommand, str):
                     if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
                         # Compare with cached heading level - we don't want to repeat heading level on every char or word move
@@ -599,7 +599,7 @@ def new_getTextInfoSpeech(
             prevValue = newCache.get(textFormatting.value, None)
             newCache[textFormatting.value] = value
             if value:
-                preCommand, postCommand = fRule.getSpeechCommand()
+                preCommand, postCommand = fRule.speechCommand, fRule.postSpeechCommand
                 if isinstance(preCommand, str):
                     if True:
                         # Compare with cached value
@@ -655,7 +655,6 @@ def new_getTextInfoSpeech(
     # We would like to avoid that, so we will suppress blanks on all intervals except for the last one if all previous are blank.
     lastIntervalIndex = [i for i, interval in enumerate(filteredIntervalsAndCommands) if isinstance(interval, tuple)][-1]
     isBlankSoFar = True
-
     for i, item in enumerate(filteredIntervalsAndCommands):
         if isinstance(item, list):
             # Injected commands
@@ -688,7 +687,6 @@ def new_getTextInfoSpeech(
                     useCache = useCacheBackup
                 elif useCache:
                     speakTextInfoStateBackup.updateObj()
-
             sequence = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
@@ -708,7 +706,7 @@ def new_getTextInfoSpeech(
                     if len(sequenceStrings) == 1 + len(suppressedSequenceStrings) and sequenceStrings[:-1] == suppressedSequenceStrings:
                         # Blank detected!
                         blankString = sequenceStrings[-1]
-                        blankCommand = blankRule.getSpeechCommand()[0]
+                        blankCommand = blankRule.speechCommand
                         for subsequence in sequence:
                             for i, command in enumerate(subsequence):
                                 if command == blankString:
@@ -775,7 +773,7 @@ def new_getControlFieldSpeech(
                 # Replacing role speech with earcon
                 role = getattr(controlTypes.Role, m.group(1))
                 rule = roleRules[role]
-                command = rule.getSpeechCommand()[0]
+                command = rule.speechCommand
                 result2.append(command)
                 continue
             elif m := PROPERTY_SPEECH_PATTERN2.match(utterance):
@@ -788,13 +786,13 @@ def new_getControlFieldSpeech(
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
                 oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
                 if oocRule is not None:
-                    command = oocRule.getSpeechCommand()[0]
+                    command = oocRule.speechCommand
                     result2.append(command)
                     continue
                 else:
                     role = getattr(controlTypes.Role, m.group(1))
                     rule = roleRules[role]
-                    command = rule.getSpeechCommand()[0]
+                    command = rule.speechCommand
                     result2.append(_("out of"))
                     result2.append(command)
                     continue
@@ -804,7 +802,7 @@ def new_getControlFieldSpeech(
                 # Since "out of" is possibly translated to other languages, we can't just match it, so we detect presence of extra characters instead.
                 oocRule = otherRules.get(OtherRule.OUT_OF_CONTAINER, None)
                 if oocRule is not None:
-                    command = oocRule.getSpeechCommand()[0]
+                    command = oocRule.speechCommand
                     result2.append(command)
                     continue
                 else:
