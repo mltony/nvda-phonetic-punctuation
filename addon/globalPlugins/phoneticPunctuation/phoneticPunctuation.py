@@ -52,6 +52,7 @@ from . import frenzy
 from config.configFlags import ReportLineIndentation
 import languageHandler
 import shutil
+import globalCommands
 
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
@@ -468,6 +469,52 @@ def preTonesInitialize(*args, **kwargs):
         log.error("Error while reloading Earcons and Speech Rules", e)
     return result
 
+highLevelSpeakFunctionNames = {
+    speech.speech: [
+        'speakMessage',
+        'speakSsml',
+        'speakSpelling',
+        'speakObjectProperties',
+        'speakObject',
+        'speakText',
+        'speakPreselectedText',
+        'speakSelectionMessage',
+        'speakTextInfo',
+    ],
+    globalCommands.GlobalCommands: [
+        'script_navigatorObject_current',
+        'script_reportCurrentFocus',
+    ],
+}
+originalHighLevelSpeakFunctions = {}
+
+def monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions():
+    def createFunctor(targetFunction):
+        def functor(*args, **kwargs):
+            if isPhoneticPunctuationEnabled():
+                # Sending a string containing a single whitespace.
+                # For some reason if the string is empty, this causes a weird exception in braille.py.
+                originalSpeechSpeechSpeak(resetProsodies([' ']))
+            return targetFunction(*args, **kwargs)
+        return functor
+    
+    for module, functionNames in highLevelSpeakFunctionNames.items():
+        originalHighLevelSpeakFunctions[module] = {}
+        for functionName in functionNames:
+            function = getattr(module, functionName)
+            originalHighLevelSpeakFunctions[module][functionName] = function
+            replacementFunctor = createFunctor(function)
+            setattr(module, functionName, replacementFunctor)
+            if module == speech.speech:
+                setattr(speech, functionName, replacementFunctor)
+
+def monkeyUnpatchRestoreProsodyInAllHighLevelSpeakFunctions():
+    for module, d in originalHighLevelSpeakFunctions.items():
+        for functionName, originalFunction in d.items():
+            setattr(module, functionName, originalFunction)
+            if module == speech.speech:
+                setattr(speech, functionName, originalFunction)
+    
 def injectMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize, originalProcessSpeechSymbols
     originalSpeechSpeechSpeak = speech.speech.speak
@@ -492,6 +539,8 @@ def injectMonkeyPatches():
     global original_getSelectionMessageSpeech
     original_getSelectionMessageSpeech = speech.speech._getSelectionMessageSpeech
     speech.speech._getSelectionMessageSpeech = new_getSelectionMessageSpeech
+    
+    monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions()
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -507,6 +556,8 @@ def  restoreMonkeyPatches():
     characterProcessing.processSpeechSymbol = original_processSpeechSymbol
     speech.speech.getIndentationSpeech = original_getIndentationSpeech
     speech.speech._getSelectionMessageSpeech = original_getSelectionMessageSpeech
+    
+    monkeyUnpatchRestoreProsodyInAllHighLevelSpeakFunctions()
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -560,7 +611,6 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
     newSequence = eloquenceFix(newSequence, language, symbolLevel)
     newSequence = unmaskMaskedStrings(newSequence)
     newSequence = fixProsodyCommands(newSequence)
-    newSequence = resetProsodies(newSequence)
     return newSequence
 
 def eloquenceFix(speechSequence, language, symbolLevel):
@@ -593,6 +643,8 @@ def unmaskMaskedStrings(sequence):
             result.append(item)
     return result
 
+prosodyStacks = collections.defaultdict(lambda: [])
+prosodyOffsets = collections.defaultdict(lambda: 0)
 def fixProsodyCommands(sequence):
     """
     Prosody commands in NVDA don't support nesting natively.
@@ -602,8 +654,7 @@ def fixProsodyCommands(sequence):
     We can't deal with multiplicative  prosody commands, so we just don't support them here.
     Adjusting prosody offsets in this function so that they support nesting.
     """
-    prosodyStacks = collections.defaultdict(lambda: [])
-    prosodyOffsets = collections.defaultdict(lambda: 0)
+    global prosodyStacks, prosodyOffsets
     result = []
     for i, command in enumerate(sequence):
         if isinstance(command, speech.commands.BaseProsodyCommand):
@@ -626,13 +677,8 @@ def fixProsodyCommands(sequence):
             command._offset = prosodyOffsets[cls]
             command.isDefault = command._offset == 0
         result.append(command)
-    for cls, stack in prosodyStacks.items():
-        if len(stack) != 0:
-            # This is not supposed to happen really.
-            # But we undo any prosody command that has not been properly closed.
-            result.append(cls(offset=0))
     return result
-    
+
 def resetProsodies(sequence):
     """
     Resetting all prosodies at the beginning of each utterance so that previous speech doesn't affect this utterance.
@@ -642,7 +688,11 @@ def resetProsodies(sequence):
     We don't want prosody to stay altered and affect the next utterance.
     NVDA appears to have some kind of logic to reset prosody, but it is unreliable and I ddin't track it down.
     So doing a poor man's prosody reset here.
+    Also resetting prosodies stack.
     """
+    global prosodyStacks, prosodyOffsets
+    prosodyStacks.clear()
+    prosodyOffsets.clear()
     if len(allProsodies) == 0:
         return sequence
     return [getProsodyClass(prosodyName)() for prosodyName in allProsodies] + sequence
@@ -731,6 +781,10 @@ def new_getSelectionMessageSpeech(
 	message,
 	text,
 ):
+    """
+    When we replace say space character with an earcon, then "space selected" message doesn't work well.
+    Fixing that behavior.
+    """
     if isPhoneticPunctuationEnabled() and not isinstance(text, str):
         # Assuming that str is an earcon rather than string
         return [

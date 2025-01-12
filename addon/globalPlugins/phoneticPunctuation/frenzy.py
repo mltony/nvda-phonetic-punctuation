@@ -95,7 +95,7 @@ def monkeyPatch():
     global original_getTextInfoSpeech
     original_getTextInfoSpeech = speech.speech.getTextInfoSpeech
     speech.speech.getTextInfoSpeech = new_getTextInfoSpeech
-    #speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
+    speech.sayAll.SayAllHandler._getTextInfoSpeech = speech.speech.getTextInfoSpeech
     
     global original_getPropertiesSpeech, original_getControlFieldSpeech
     original_getPropertiesSpeech = speech.speech.getPropertiesSpeech
@@ -720,7 +720,7 @@ def new_getTextInfoSpeech(
             formatConfig["reportLineIndentation"] = ReportLineIndentation.OFF
     # At this point result is a list of lists of speech commands.
     # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
-    result = [[item for subgroup in result for item in subgroup]]
+    #result = [[item for subgroup in result for item in subgroup]]
     yield from result
 
 # some random funny Unicode characters
