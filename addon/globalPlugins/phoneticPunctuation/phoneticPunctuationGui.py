@@ -55,11 +55,7 @@ class AudioRuleDialog(wx.Dialog):
         audioRuleTextSubstitution: _("&Text"),
         audioRuleNoop: _("&Keep original"),
     }
-    PROSODY_LABELS = [
-        "Pitch",
-        "Volume",
-        "Rate",
-    ]
+    PROSODY_LABELS = common.PROSODY_LABELS
     TYPE_LABELS_ORDERING = audioRuleTypes
 
     def __init__(

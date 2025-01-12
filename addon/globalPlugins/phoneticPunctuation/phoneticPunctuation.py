@@ -53,7 +53,6 @@ from config.configFlags import ReportLineIndentation
 import languageHandler
 import shutil
 import globalCommands
-from speech.extensions import speechCanceled
 
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
@@ -503,7 +502,7 @@ def monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions():
             global pdbg
             if functionName == 'speakTextInfo':
                 info = args[0]
-                if 'm' == info.text:
+                if 'd' == info.text:
                     tones.beep(500, 50)
                     pdbg = True
                     frenzy.pdbg = True
@@ -676,6 +675,24 @@ def fixProsodyCommands(sequence):
     Adjusting prosody offsets in this function so that they support nesting.
     """
     global prosodyStacks, prosodyOffsets
+    prosodySettings = {}
+    def findProsodySetting(cls):
+        nonlocal prosodySettings
+        try:
+            return prosodySettings[cls]
+        except KeyError:
+            pass
+        clsName  = cls.__name__
+        commandSuffix = 'Command'
+        if not clsName.endswith(commandSuffix):
+            raise RuntimeError(f"Unknown Prosody {clsName}")
+        prosodyName = clsName[:-len(commandSuffix)].lower()
+        for srs in globalVars.settingsRing.settings:
+            if srs.setting.id == prosodyName:
+                prosodySettings[cls] = srs
+                return srs
+        raise RuntimeError(f"Couldn't find  Prosody {clsName}")
+            
     result = []
     for i, command in enumerate(sequence):
         if isinstance(command, speech.commands.BaseProsodyCommand):
@@ -695,7 +712,18 @@ def fixProsodyCommands(sequence):
                 prosodyStacks[cls].append(prosodyOffsets[cls])
                 prosodyOffsets[cls] += commandOffset
             command = copy.deepcopy(command)
-            command._offset = prosodyOffsets[cls]
+            # Let's make sure the offset doesn't go beyond (0, 100) interval - otherwise synths will ignore this command.
+            ps = findProsodySetting(cls)
+            maxOffset = ps.max - ps.value
+            minOffset = ps.min - ps.value
+            effectiveOffset = max(
+                minOffset,
+                min(
+                    maxOffset,
+                    prosodyOffsets[cls]
+                )
+            )
+            command._offset = effectiveOffset
             command.isDefault = command._offset == 0
         result.append(command)
     return result
@@ -711,7 +739,6 @@ def resetProsodies(sequence):
     So doing a poor man's prosody reset here.
     Also resetting prosodies stack.
     """
-    log.warn("asdf resetProsodies")
     global prosodyStacks, prosodyOffsets
     prosodyStacks.clear()
     prosodyOffsets.clear()

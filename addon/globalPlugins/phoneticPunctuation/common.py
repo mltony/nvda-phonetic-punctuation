@@ -152,3 +152,9 @@ ALLOWED_TYPES_BY_FRENZY_TYPE = {
         audioRuleTextSubstitution,
     ],
 }
+
+PROSODY_LABELS = [
+    "Pitch",
+    "Volume",
+    "Rate",
+]
