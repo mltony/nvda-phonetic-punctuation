@@ -648,7 +648,19 @@ def new_getTextInfoSpeech(
             emptyIndex += int(isEmpty)
         else:
             raise RuntimeError
-    result = []
+    
+    # Here is the meaning of buffer
+    # upstream speech commands return lists of speech sequences
+    # We can't merge these lists, otherwise this affects some synthesizers,
+    # For example when characters  are being spelled, eSpeak would spell delta as 
+    # delta echo lima tango alpha
+    # That's because we switch to spelling mode in the first sequence and send delta in the second sequence
+    # We also can't have too  many separate sequences, because OneCore is pretty sluggish
+    # and adds extra delay on each sequence.
+    # Trying to find a good balance point by merging what we can merge,
+    # but when upstream function returns a list of 2+ sequences,
+    # then yielding them separately.
+    buffer = []
     # Even though we have already filtered out empty intervals (e.g. intervals containingg no string to speak),
     # Some of the intervals might still be blank, e.g., if an interval only contains a single whitespace character,
     # NVDA would speak it as blank".
@@ -658,7 +670,7 @@ def new_getTextInfoSpeech(
     for i, item in enumerate(filteredIntervalsAndCommands):
         if isinstance(item, list):
             # Injected commands
-            result.append(item)
+            buffer.extend(item)
         elif isinstance(item, tuple):
             # Interval
             start, end = item
@@ -673,7 +685,7 @@ def new_getTextInfoSpeech(
                     useCacheBackup = useCache.copy()
                 elif useCache:
                     speakTextInfoStateBackup = speech.speech.SpeakTextInfoState(info.obj)
-                suppressedSequence = list(original_getTextInfoSpeech(
+                suppressedSequences = list(original_getTextInfoSpeech(
                     fakeTextInfo,
                     useCache ,
                     formatConfig,
@@ -687,7 +699,7 @@ def new_getTextInfoSpeech(
                     useCache = useCacheBackup
                 elif useCache:
                     speakTextInfoStateBackup.updateObj()
-            sequence = list(original_getTextInfoSpeech(
+            sequences = list(original_getTextInfoSpeech(
                 fakeTextInfo,
                 useCache ,
                 formatConfig,
@@ -701,27 +713,29 @@ def new_getTextInfoSpeech(
                 blankRule = otherRules.get(OtherRule.BLANK, None)
                 if blankRule is not None:
                     # only compare string commands
-                    sequenceStrings = [s for ss in sequence for s in ss if isinstance(s, str)]
-                    suppressedSequenceStrings = [s for ss in suppressedSequence for s in ss if isinstance(s, str)]
+                    sequenceStrings = [s for ss in sequences for s in ss if isinstance(s, str)]
+                    suppressedSequenceStrings = [s for ss in suppressedSequences for s in ss if isinstance(s, str)]
                     if len(sequenceStrings) == 1 + len(suppressedSequenceStrings) and sequenceStrings[:-1] == suppressedSequenceStrings:
                         # Blank detected!
                         blankString = sequenceStrings[-1]
                         blankCommand = blankRule.speechCommand
-                        for subsequence in sequence:
+                        for subsequence in sequences:
                             for i, command in enumerate(subsequence):
                                 if command == blankString:
                                     subsequence[i] = blankCommand
-            isBlank = isBlankSequence(sequence)
+            isBlank = isBlankSequence(sequences)
             if not isBlank:
                 isBlankSoFar = False
-            result.extend(sequence)
+            for i, subsequence in enumerate(sequences):
+                if i > 0:
+                    yield buffer
+                    buffer = []
+                buffer.extend(subsequence)
             # Whatever is the original value of indentation reporting,
             # we should only report it for the first interval and turn off for all the rest.
             formatConfig["reportLineIndentation"] = ReportLineIndentation.OFF
-    # At this point result is a list of lists of speech commands.
-    # We group them together - this way if speech is interrupted, then NVDA will automatically cancel pending pitch and other prosody commands.
-    #result = [[item for subgroup in result for item in subgroup]]
-    yield from result
+    if len(buffer) > 0:
+        yield buffer
 
 # some random funny Unicode characters
 PROPERTY_SPEECH_SIGNATURE = "🪛🪕🚛"
@@ -853,7 +867,7 @@ def new_getTextInfoSpeech_considerSpelling(
     Overriding the whole function to patch that behavior.
     """
     #if onlyInitialFields or any(isinstance(x, str) for x in speechSequence):
-    if True:
+    if onlyInitialFields or any(isinstance(x, (str, PpSynchronousCommand, speech.commands.BaseProsodyCommand)) for x in speechSequence):
         yield speechSequence
     if not onlyInitialFields:
         spellingSequence = list(

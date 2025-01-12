@@ -53,6 +53,7 @@ from config.configFlags import ReportLineIndentation
 import languageHandler
 import shutil
 import globalCommands
+from speech.extensions import speechCanceled
 
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
@@ -382,8 +383,8 @@ originalSpeechSpeechSpeak = None
 originalSpeechCancel = None
 originalProcessSpeechSymbols = None
 originalTonesInitialize = None
-
 def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
+    global speechCancelledFlag
     if isPhoneticPunctuationEnabled():
         if symbolLevel is None:
             symbolLevel=config.conf["speech"]["symbolLevel"]
@@ -403,7 +404,12 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
             ):
                 continue
             newSequence = processRule(newSequence, rule, symbolLevel)
+        resetProsodiesSequence = []
+        if speechCancelledFlag:
+            resetProsodiesSequence = resetProsodies([])
+            speechCancelledFlag = False
         newSequence = postProcessSynchronousCommands(newSequence, symbolLevel)
+        newSequence = resetProsodiesSequence + newSequence
         #mylog("Speaking!")
         mylog(str(newSequence))
     else:
@@ -411,7 +417,10 @@ def preSpeak(speechSequence, symbolLevel=None, *args, **kwargs):
     newSequence = newSequence + [' '] # Otherwise v2024.2 throws weird Braille Exception + 
     return originalSpeechSpeechSpeak(newSequence, symbolLevel=symbolLevel, *args, **kwargs)
 
+speechCancelledFlag = False
 def preCancelSpeech(*args, **kwargs):
+    global speechCancelledFlag
+    speechCancelledFlag = True
     if isPhoneticPunctuationEnabled():
         localCurrentChain = commands.currentChain
         if localCurrentChain is not None:
@@ -471,31 +480,43 @@ def preTonesInitialize(*args, **kwargs):
 
 highLevelSpeakFunctionNames = {
     speech.speech: [
-        'speakMessage',
-        'speakSsml',
-        'speakSpelling',
-        'speakObjectProperties',
-        'speakObject',
-        'speakText',
-        'speakPreselectedText',
-        'speakSelectionMessage',
+        #'speakMessage',
+        #'speakSsml',
+        #'speakSpelling',
+        #'speakObjectProperties',
+        #'speakObject',
+        #'speakText',
+        #'speakPreselectedText',
+        #'speakSelectionMessage',
         'speakTextInfo',
     ],
     globalCommands.GlobalCommands: [
-        'script_navigatorObject_current',
-        'script_reportCurrentFocus',
+        #'script_navigatorObject_current',
+        #'script_reportCurrentFocus',
     ],
 }
 originalHighLevelSpeakFunctions = {}
-
+pdbg = False
 def monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions():
-    def createFunctor(targetFunction):
+    def createFunctor(targetFunction, functionName):
         def functor(*args, **kwargs):
+            global pdbg
+            if functionName == 'speakTextInfo':
+                info = args[0]
+                if 'm' == info.text:
+                    tones.beep(500, 50)
+                    pdbg = True
+                    frenzy.pdbg = True
             if isPhoneticPunctuationEnabled():
                 # Sending a string containing a single whitespace.
                 # For some reason if the string is empty, this causes a weird exception in braille.py.
-                originalSpeechSpeechSpeak(resetProsodies([' ']))
-            return targetFunction(*args, **kwargs)
+                #originalSpeechSpeechSpeak(resetProsodies([' ']))
+                pass
+            result = targetFunction(*args, **kwargs)
+            if pdbg:
+                pdbg = False
+                frenzy.pdbg = False
+            return result
         return functor
     
     for module, functionNames in highLevelSpeakFunctionNames.items():
@@ -503,7 +524,7 @@ def monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions():
         for functionName in functionNames:
             function = getattr(module, functionName)
             originalHighLevelSpeakFunctions[module][functionName] = function
-            replacementFunctor = createFunctor(function)
+            replacementFunctor = createFunctor(function, functionName)
             setattr(module, functionName, replacementFunctor)
             if module == speech.speech:
                 setattr(speech, functionName, replacementFunctor)
@@ -540,7 +561,7 @@ def injectMonkeyPatches():
     original_getSelectionMessageSpeech = speech.speech._getSelectionMessageSpeech
     speech.speech._getSelectionMessageSpeech = new_getSelectionMessageSpeech
     
-    monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions()
+    #monkeyPatchRestoreProsodyInAllHighLevelSpeakFunctions()
 
 def  restoreMonkeyPatches():
     global originalSpeechSpeechSpeak, originalSpeechCancel, originalTonesInitialize
@@ -557,7 +578,7 @@ def  restoreMonkeyPatches():
     speech.speech.getIndentationSpeech = original_getIndentationSpeech
     speech.speech._getSelectionMessageSpeech = original_getSelectionMessageSpeech
     
-    monkeyUnpatchRestoreProsodyInAllHighLevelSpeakFunctions()
+    #monkeyUnpatchRestoreProsodyInAllHighLevelSpeakFunctions()
 
 
 def processRule(speechSequence, rule, symbolLevel):
@@ -690,6 +711,7 @@ def resetProsodies(sequence):
     So doing a poor man's prosody reset here.
     Also resetting prosodies stack.
     """
+    log.warn("asdf resetProsodies")
     global prosodyStacks, prosodyOffsets
     prosodyStacks.clear()
     prosodyOffsets.clear()
@@ -792,4 +814,3 @@ def new_getSelectionMessageSpeech(
             text,
         ]
     return original_getSelectionMessageSpeech(message, text)
-
