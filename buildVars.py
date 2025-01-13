@@ -22,7 +22,7 @@ addon_info = {
 Allows to set up earcons for words, characters, roles, states, formatting information.
 Please check out documentation for the full list of available speech rules."""),
     # version
-    "addon_version": "3.0.4",
+    "addon_version": "3.0.5dev",
     # Author(s)
     "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
     # URL for the add-on documentation support
