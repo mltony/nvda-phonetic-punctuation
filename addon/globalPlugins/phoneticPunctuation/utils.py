@@ -72,7 +72,7 @@ class Worker(Thread):
                 func(*args, **kargs)
             except Exception as e:
                 # An exception happened in this thread
-                log.error("Error in ThreadPool ", e)
+                log.exception("Error in ThreadPool ", e)
             finally:
                 # Mark this task as done, whether an exception happened or not
                 self.tasks.task_done()
