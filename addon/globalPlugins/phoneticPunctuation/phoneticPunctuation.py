@@ -67,6 +67,13 @@ audioRuleTypes = [
 ]
 
 class MaskedString:
+    """
+    We convert a string into Masked string to prevent rules from acting on it.
+    This is useful when we have processed some punctuation marks, such as a comma,
+    and would like to feed it to the synth, and avoid any other rules from acting upon it.
+    So we temporarily mask the comma, and unmask it at the end.
+    """
+    
     def __init__(self, s):
         self.s = s
 
@@ -618,7 +625,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
                     excludeIndices.add(j)
                 elif isEmptyString(cj):
                     excludeIndices.add(j)
-                elif isinstance(cj, speech.commands.LangChangeCommand):
+                elif isinstance(cj, (speech.commands.LangChangeCommand, MaskedString)):
                     pass
                 else:
                     break
