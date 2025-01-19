@@ -530,14 +530,14 @@ def new_getTextInfoSpeech(
             hlr = headingLevelRules.get(level, None)
             if hlr is not None:
                 preCommand, postCommand = hlr.speechCommand, hlr.postSpeechCommand
-                if isinstance(preCommand, (speech.commands.BaseProsodyCommand, PpSynchronousCommand)):
+                if isinstance(preCommand, speech.commands.BaseProsodyCommand):
                     pass
-                elif isinstance(preCommand, str):
+                elif isinstance(preCommand, (str, PpSynchronousCommand)):
                     if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
                         # Compare with cached heading level - we don't want to repeat heading level on every char or word move
                         if cache.get('headingLevel', None) == level:
                             continue
-                    elif reason == OutputReason.QUICKNAV:
+                    elif reason == OutputReason.QUICKNAV and isinstance(preCommand, str):
                         # During quickNav speak Heading level at the end.
                         preCommand, postCommand = postCommand, preCommand
                 else:
