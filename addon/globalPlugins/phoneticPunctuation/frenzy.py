@@ -328,6 +328,9 @@ class FakeTextInfo:
     @property
     def obj(self):
         return self.info.obj
+    
+    def getMathMl(self, field):
+        return self.info.getMathMl(field)
 
 def findControlEnd(fields, start):
     i = start
@@ -435,10 +438,16 @@ def new_getTextInfoSpeech(
         if unit in (textInfos.UNIT_PARAGRAPH, textInfos.UNIT_CELL) and reason == OutputReason.CARET:
             formatConfig["reportSpellingErrors"] = False
     headingLevelRule = numericFormatRules.get(NumericTextFormat.HEADING_LEVEL, None)
+    headingLevelRules = {
+        level: formatRules.get(
+            getattr(TextFormat, f'HEADING{level}'),
+            None)
+        for level in range(1, 7)
+    }
     headingRule = formatRules.get(TextFormat.HEADING, None)
     fontSizeRule = numericFormatRules.get(NumericTextFormat.FONT_SIZE, None)
     highlightedRule = formatRules.get(TextFormat.HIGHLIGHTED, None)
-    processHeadings = headingLevelRule is not None or headingRule is not None
+    processHeadings = headingLevelRule is not None or headingRule is not None or any(hr is not None for hr in headingLevelRules.values())
     firstHeadingLevelCommand = None
     preventSpellingCharacters = (
         unit not in  [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]
@@ -497,7 +506,7 @@ def new_getTextInfoSpeech(
                 if preCommand is not None:
                     newCommands[start].append(preCommand)
                 if postCommand is not None:
-                    newCommands[end].append(postCommand)
+                    newCommands[end].insert(0, postCommand)
             if headingLevelRule is not None:
                 preCommand, postCommand = headingLevelRule.getNumericSpeechCommand(level)
                 if isinstance(preCommand, speech.commands.BaseProsodyCommand):
@@ -517,7 +526,29 @@ def new_getTextInfoSpeech(
                         firstHeadingLevelCommand = preCommand
                     newCommands[start].append(preCommand)
                 if postCommand is not None:
-                    newCommands[end].append(postCommand)
+                    newCommands[end].insert(0, postCommand)
+            hlr = headingLevelRules.get(level, None)
+            if hlr is not None:
+                preCommand, postCommand = hlr.speechCommand, hlr.postSpeechCommand
+                if isinstance(preCommand, (speech.commands.BaseProsodyCommand, PpSynchronousCommand)):
+                    pass
+                elif isinstance(preCommand, str):
+                    if i == 0 and unit in [textInfos.UNIT_CHARACTER, textInfos.UNIT_WORD]:
+                        # Compare with cached heading level - we don't want to repeat heading level on every char or word move
+                        if cache.get('headingLevel', None) == level:
+                            continue
+                    elif reason == OutputReason.QUICKNAV:
+                        # During quickNav speak Heading level at the end.
+                        preCommand, postCommand = postCommand, preCommand
+                else:
+                    raise RuntimeError
+                if preCommand is not None:
+                    if firstHeadingLevelCommand is None:
+                        firstHeadingLevelCommand = preCommand
+                    newCommands[start].append(preCommand)
+                if postCommand is not None:
+                    newCommands[end].insert(0, postCommand)
+                    
     if highlightedRule is not None:
         highlightedStarts = list(findAllControlFields(fields, role=controlTypes.Role.MARKED_CONTENT))
         highlightedEnds = [findControlEnd(fields, highlightedSstart) for highlightedSstart in highlightedStarts]

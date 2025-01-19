@@ -64,8 +64,14 @@ class TextFormat(Enum):
     ITALIC = 'italic'
     UNDERLINE = 'underline'
     STRIKETHROUGH = 'strikethrough'
-    HEADING = 'heading'
     HIGHLIGHTED = 'highlighted'
+    HEADING = 'heading'
+    HEADING1 = 'heading1'
+    HEADING2 = 'heading2'
+    HEADING3 = 'heading3'
+    HEADING4 = 'heading4'
+    HEADING5 = 'heading5'
+    HEADING6 = 'heading6'
 
 TEXT_FORMAT_NAMES = {
     TextFormat.BOLD: _('Bold'),
@@ -74,6 +80,12 @@ TEXT_FORMAT_NAMES = {
     TextFormat.STRIKETHROUGH: _('Strikethrough'),
     TextFormat.HEADING: _('Heading'),
     TextFormat.HIGHLIGHTED: _('Highlighted'),
+    TextFormat.HEADING1: _('Heading level 1'),
+    TextFormat.HEADING2: _('Heading level 2'),
+    TextFormat.HEADING3: _('Heading level 3'),
+    TextFormat.HEADING4: _('Heading level 4'),
+    TextFormat.HEADING5: _('Heading level 5'),
+    TextFormat.HEADING6: _('Heading level 6'),
 }
 
 class NumericTextFormat(Enum):
