@@ -157,7 +157,8 @@ class PpChainCommand(PpSynchronousCommand):
             threadPool.add_task(subcommand.run)
             timestamp += subcommand.getDuration() / 1000
             sleepTime = timestamp - time.time()
-            time.sleep(sleepTime)
+            if sleepTime > 0:
+                time.sleep(sleepTime)
         currentChain = None
         
 
