@@ -698,7 +698,10 @@ def fixProsodyCommands(sequence):
             if srs.setting.id == prosodyName:
                 prosodySettings[cls] = srs
                 return srs
-        raise RuntimeError(f"Couldn't find  Prosody {clsName}")
+        # Well, perhaps current synth doesn't support given prosody.
+        prosodySettings[cls] = None
+        return None
+        
             
     result = []
     for i, command in enumerate(sequence):
@@ -721,15 +724,18 @@ def fixProsodyCommands(sequence):
             command = copy.deepcopy(command)
             # Let's make sure the offset doesn't go beyond (0, 100) interval - otherwise synths will ignore this command.
             ps = findProsodySetting(cls)
-            maxOffset = ps.max - ps.value
-            minOffset = ps.min - ps.value
-            effectiveOffset = max(
-                minOffset,
-                min(
-                    maxOffset,
-                    prosodyOffsets[cls]
+            if ps is not None:
+                maxOffset = ps.max - ps.value
+                minOffset = ps.min - ps.value
+                effectiveOffset = max(
+                    minOffset,
+                    min(
+                        maxOffset,
+                        prosodyOffsets[cls]
+                    )
                 )
-            )
+            else:
+                effectiveOffset = prosodyOffsets[cls]
             command._offset = effectiveOffset
             command.isDefault = command._offset == 0
         result.append(command)
