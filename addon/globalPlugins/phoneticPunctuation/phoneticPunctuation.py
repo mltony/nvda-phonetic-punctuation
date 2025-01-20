@@ -625,7 +625,7 @@ def postProcessSynchronousCommands(speechSequence, symbolLevel):
                     excludeIndices.add(j)
                 elif isEmptyString(cj):
                     excludeIndices.add(j)
-                elif isinstance(cj, (speech.commands.LangChangeCommand, MaskedString)):
+                elif isinstance(cj, (speech.commands.LangChangeCommand, MaskedString, speech.commands.BaseProsodyCommand)):
                     pass
                 else:
                     break
