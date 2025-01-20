@@ -29,6 +29,7 @@ import os
 from queue import Queue
 import re
 from scriptHandler import script, willSayAllResume
+import scriptHandler
 import speech
 import speech.commands
 import struct
@@ -93,3 +94,33 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             msg = _("Concise state reporting")
         ui.message(msg)
         frenzy.updateRules()
+
+    @script(description='Speak current heading level.', gestures=['kb:NVDA+h'])
+    def script_speakHeadingLevel(self, gesture):
+        count=scriptHandler.getLastScriptRepeatCount()
+        focus  = api.getFocusObject()
+        if focus.treeInterceptor is not None:
+            if not focus.treeInterceptor.passThrough:
+                focus = focus.treeInterceptor
+        info = focus.makeTextInfo(textInfos.POSITION_CARET)
+        info.expand(textInfos.UNIT_CHARACTER)
+        fields = info.getTextWithFields()
+        levelFound = False
+        for field in fields:
+            if(
+                isinstance(field,textInfos.FieldCommand)
+                and field.command == "controlStart"
+            ):
+                try:
+                    role = field.field['role']
+                    level = field.field['level']
+                except KeyError:
+                    continue
+                if count == 0 and role != controlTypes.Role.HEADING:
+                    continue
+                roleText = role.displayString
+                ui.message(_("{roleText} level {level}").format(**locals()))
+                levelFound = True
+        if not levelFound:
+            ui.message(_("Noe heading level information"))
+        
