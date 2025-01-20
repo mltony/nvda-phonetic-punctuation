@@ -78,6 +78,12 @@ This includes some unrelated phrases spoken by NVDA that can also be replaced wi
 * Out of container, such as out of frame;
 * No indent when indentation level announcement is set to speech.
 
+## Keyboard commands:
+
+* NVDA+Alt+P: toggle earcons and sound speech rules add-on.
+* NVDA+Alt+[ (left bracket): Toggle concise state reporting mode
+* NVDA+H: speak current heading level.
+
 ## Supported voice synthesizers
 Earcons and speech rules makes use of advanced NVDA speech commands and they are not always well supported by all TTS synthesizers.
 
