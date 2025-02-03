@@ -4,7 +4,9 @@
 #This file is covered by the GNU General Public License.
 #See the file COPYING.txt for more details.
 
+import addonHandler
 from enum import Enum
+addonHandler.initTranslation()
 
 audioRuleBuiltInWave = "builtInWave"
 audioRuleWave = "wave"
@@ -36,25 +38,25 @@ class FrenzyType(Enum):
 
 
 FRENZY_NAMES = {
-    FrenzyType.TEXT: "Text regular expressions",
-    FrenzyType.CHARACTER: "Characters",
-    FrenzyType.ROLE: "Roles",
-    FrenzyType.STATE: "States",
-    FrenzyType.NEGATIVE_STATE: "Negative states",
-    FrenzyType.FORMAT: "Text formatting",
-    FrenzyType.NUMERIC_FORMAT: "Numeric text formatting",
-    FrenzyType.OTHER_RULE: "Other audio rules",
+    FrenzyType.TEXT: _("Text regular expressions"),
+    FrenzyType.CHARACTER: _("Characters"),
+    FrenzyType.ROLE: _("Roles"),
+    FrenzyType.STATE: _("States"),
+    FrenzyType.NEGATIVE_STATE: _("Negative states"),
+    FrenzyType.FORMAT: _("Text formatting"),
+    FrenzyType.NUMERIC_FORMAT: _("Numeric text formatting"),
+    FrenzyType.OTHER_RULE: _("Other audio rules"),
 }
 
 FRENZY_NAMES_SINGULAR = {
-    FrenzyType.TEXT: "Text regular expression pattern",
-    FrenzyType.CHARACTER: "Character",
-    FrenzyType.ROLE: "Role",
-    FrenzyType.STATE: "State",
-    FrenzyType.NEGATIVE_STATE: "Negative state",
-    FrenzyType.FORMAT: "Format",
-    FrenzyType.NUMERIC_FORMAT: "Numeric format",
-    FrenzyType.OTHER_RULE: "Other audio rule",
+    FrenzyType.TEXT: _("Text regular expression pattern"),
+    FrenzyType.CHARACTER: _("Character"),
+    FrenzyType.ROLE: _("Role"),
+    FrenzyType.STATE: _("State"),
+    FrenzyType.NEGATIVE_STATE: _("Negative state"),
+    FrenzyType.FORMAT: _("Format"),
+    FrenzyType.NUMERIC_FORMAT: _("Numeric format"),
+    FrenzyType.OTHER_RULE: _("Other audio rule"),
 }
 
 rulesDialogOpen = False
