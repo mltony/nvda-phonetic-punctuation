@@ -1,0 +1,679 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: phoneticPunctuation 译者： 世界没有真情、, Cary-rowen\n"
+"Report-Msgid-Bugs-To: 'nvda-translations@groups.io'\n"
+"POT-Creation-Date: 2025-02-03 17:19+0800\n"
+"PO-Revision-Date: 2025-02-03 17:25+0800\n"
+"Last-Translator: \n"
+"Language-Team: \n"
+"Language: zh_CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: Poedit 3.5\n"
+
+#. Translators: Title for the settings dialog
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:55
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:701
+msgid "Earcons and Speech Rules"
+msgstr "耳标和语音规则"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:75
+msgid "Toggle Earcons and Speech Rules."
+msgstr "耳标和语音规则切换。"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:81
+msgid "Earcons and Speech Rules on"
+msgstr "开启耳标和语音规则"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:83
+msgid "Earcons and Speech Rules off"
+msgstr "关闭耳标和语音规则"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:86
+msgid "Toggle state verbosity reporting."
+msgstr "详细状态朗读切换。"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:92
+msgid "Verbose state reporting"
+msgstr "详细状态朗读"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:94
+msgid "Concise state reporting"
+msgstr "简洁状态朗读"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:98
+msgid "Speak current heading level."
+msgstr "读出当前标题级别。"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:122
+msgid "{roleText} level {level}"
+msgstr "{roleText} 级别 {level}"
+
+#: addon\globalPlugins\phoneticPunctuation\__init__.py:125
+msgid "Noe heading level information"
+msgstr "没有标题级别信息"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:41
+msgid "Text regular expressions"
+msgstr "文本正则表达式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:42
+msgid "Characters"
+msgstr "符号"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:43
+msgid "Roles"
+msgstr "角色"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:44
+msgid "States"
+msgstr "状态"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:45
+msgid "Negative states"
+msgstr "否定状态"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:46
+msgid "Text formatting"
+msgstr "文本格式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:47
+msgid "Numeric text formatting"
+msgstr "数值格式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:48
+msgid "Other audio rules"
+msgstr "其他声音规则"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:52
+msgid "Text regular expression pattern"
+msgstr "匹配的正则表达式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:53
+msgid "Character"
+msgstr "字符"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:54
+msgid "Role"
+msgstr "角色"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:55
+msgid "State"
+msgstr "状态"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:56
+msgid "Negative state"
+msgstr "否定状态"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:57
+msgid "Format"
+msgstr "格式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:58
+msgid "Numeric format"
+msgstr "数值格式"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:59
+msgid "Other audio rule"
+msgstr "其他声音规则"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:79
+msgid "Bold"
+msgstr "粗体"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:80
+msgid "Italic"
+msgstr "斜体"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:81
+msgid "Underline"
+msgstr "下划线"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:82
+msgid "Strikethrough"
+msgstr "删除线"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:83
+msgid "Heading"
+msgstr "标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:84
+msgid "Highlighted"
+msgstr "高亮"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:85
+msgid "Heading level 1"
+msgstr "1级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:86
+msgid "Heading level 2"
+msgstr "2级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:87
+msgid "Heading level 3"
+msgstr "3级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:88
+msgid "Heading level 4"
+msgstr "4级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:89
+msgid "Heading level 5"
+msgstr "5级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:90
+msgid "Heading level 6"
+msgstr "6级标题"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:98
+msgid "Font size"
+msgstr "字体大小"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:99
+msgid "Heading level"
+msgstr "标题级别"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:108
+msgid "Out of container"
+msgstr "离开容器"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:109
+msgid "Blank announcement"
+msgstr "空白提示"
+
+#: addon\globalPlugins\phoneticPunctuation\common.py:110
+msgid "No indent announcement"
+msgstr "无缩进提示"
+
+#: addon\globalPlugins\phoneticPunctuation\frenzy.py:841
+msgid "out of"
+msgstr "离开"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuation.py:335
+msgid ""
+"Phonetic punctuation add-on has been renamed to Earcons and Speech Rules.\n"
+"We have automatically migrated all your phonetic punctuation rules to "
+"Earcons and Speech Rules add-on, so no further action is required.\n"
+"Please feel free to explore add-on settings to discover new features.\n"
+msgstr ""
+"语音标点插件已重命名为耳标和语音规则。\n"
+"\n"
+"我们已自动将您的所有语音标点规则迁移到耳标和语音规则插件，因此无需采取进一步"
+"操作。\n"
+"\n"
+"请随意探索插件设置以发现更多新功能。\n"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuation.py:339
+msgid "Earcons and Speech Rules add-on"
+msgstr "耳标和语音规则插件"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuation.py:375
+msgid ""
+"Error initializing some text rules of Earcons and Speech Rules add-on since "
+"they contain URL filter.\n"
+"URL detection feature requires BrowserNav v2.6.2 or later add-on to be "
+"installed.\n"
+"However it is either not installed, or failed to initialize.\n"
+"Please install the latest BrowserNav add-on from add-on store and restart "
+"NVDA.\n"
+"In the mean time all text rules with URL filter will be disabled.\n"
+msgstr ""
+"初始化耳标与语音规则插件的部分文本规则时发生错误，因其包含URL匹配规则。\n"
+"URL检测功能需安装BrowserNav v2.6.2或更高版本插件，但当前未检测到该插件或其初"
+"始化失败。\n"
+"请从插件商店安装最新版BrowserNav插件并重启NVDA。在此期间，所有含URL匹配的文本"
+"规则将被禁用。\n"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuation.py:381
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:415
+msgid "Earcons and speech rules add-on Error"
+msgstr "耳标和语音规则插件错误"
+
+#. Translators: This is spoken when the given line has no indentation.
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuation.py:804
+msgid "no indent"
+msgstr "无缩进"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:53
+msgid "&Built in wave"
+msgstr "内置音效 (&B)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:54
+msgid "&Wave file"
+msgstr "Wav 文件 (&W)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:55
+msgid "&Beep"
+msgstr "嘟嘟声 (&B)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:56
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:57
+msgid "&Prosody"
+msgstr "韵律 (&P)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:58
+msgid "&Text"
+msgstr "文本(&T)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:59
+msgid "&Keep original"
+msgstr "保持原样(&L)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:67
+msgid "Edit audio rule"
+msgstr "编辑声音规则"
+
+#. Translators: label for pattern  edit field in add Audio Rule dialog.
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:117
+msgid "&Pattern"
+msgstr "模式 (&P)"
+
+#. Translators: label for rule_enabled  checkbox in add audio rule dialog.
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:131
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:826
+msgid "Rule enabled"
+msgstr "启用该规则"
+
+#. Translators: label for enable passthrough checkbox
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:135
+msgid ""
+"Pass raw text through to synth. Typically you want to enable this only for "
+"punctuation marks and disable for all other rules."
+msgstr ""
+"将原文本传递给合成器。通常而言，您可能只希望为标点符号启用此功能，而对于其他"
+"规则都可以禁用。"
+
+#. Translators:  label for type selector radio buttons in add audio rule dialog
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:140
+msgid "&Type"
+msgstr "类型 (&T)"
+
+#. Translators: built in wav category  combo box
+#. Translators: frenzy type combo box
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:157
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:711
+msgid "&Category:"
+msgstr "分类 (&C)"
+
+#. Translators: built in wav file combo box
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:167
+msgid "&Wave:"
+msgstr "内置音效 (&W)"
+
+#. Translators: wav file edit box
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:179
+msgid "Wav file"
+msgstr "Wave文件"
+
+#. Translators: This is the button to browse for wav file
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:184
+msgid "&Browse..."
+msgstr "浏览 (&B)"
+
+#. Volume slider
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:188
+msgid "Volume"
+msgstr "音量"
+
+#. Translators: label for adjust start
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:196
+msgid ""
+"Start adjustment in millis - positive to cut off start, negative for extra "
+"pause in the beginning."
+msgstr ""
+"开始实调整（以毫秒为单位的时长）-正值表示截断播放，负值表示延时播放，0为不调"
+"整。"
+
+#. Translators: label for adjust end
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:201
+msgid ""
+"End adjustment in millis - positive for early cut off, negative for extra "
+"pause in the end"
+msgstr ""
+"播放结束时调整（以毫秒为单位的时长）：正值表示提前停止，负值表示延时停止"
+
+#. Translators: label for tone
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:206
+msgid "&Tone"
+msgstr "音调 (&T)"
+
+#. Translators: label for duration
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:211
+msgid "Duration in milliseconds:"
+msgstr "持续时间(毫秒)"
+
+#. Translators: prosody name comboBox
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:216
+msgid "&Prosody name:"
+msgstr "韵律名称(&P)"
+
+#. Translators: label for prosody offset
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:226
+msgid "Prosody offset:"
+msgstr "韵律偏移："
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:232
+msgid "Minimum font size or heading level"
+msgstr "最小字号或标题级别"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:237
+msgid "Maximum font size or heading level"
+msgstr "最大字号或标题级别"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:242
+msgid "Minimum prosody offset"
+msgstr "最小韵律偏移"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:247
+msgid "Maximum prosody offset"
+msgstr "最大韵律偏移"
+
+#. Text replacement edit box
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:264
+msgid "&Replacement pattern"
+msgstr "替换模式(&R)"
+
+#. suppressStateClutter checkbox
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:268
+msgid "Suppress this state in non-verbose mode."
+msgstr "在非详细状态模式下禁止读出该状态。"
+
+#. Translators: label for comment edit box
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:272
+msgid "&Comment"
+msgstr "注释 (&C)"
+
+#. Translators: This is the button to test audio rule
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:275
+msgid "&Test, press twice for repeated sound"
+msgstr "测试，连按两次可重复发出声音 (&T)"
+
+#. application name filter regex
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:279
+msgid "Filter applications regex"
+msgstr "正则表达式匹配应用名称"
+
+#. Window title filter regex
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:282
+msgid "Filter window title regex"
+msgstr "正则表达式匹配窗口标题"
+
+#. URL filter regex
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:285
+msgid "Filter URL regex"
+msgstr "正则表达式匹配 URL"
+
+#. Translators: This is an error message to let the user know that the pattern field is not valid.
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:378
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:423
+msgid "A pattern is required."
+msgstr "此方案名称无效，请重新输入。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:378
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:385
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:389
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:403
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:423
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:427
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:442
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:450
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:458
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:465
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:477
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:487
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:494
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:506
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:518
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:536
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:540
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:544
+msgid "Dictionary Entry Error"
+msgstr "字典输入错误"
+
+#. Translators: Invalid regular expression
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:385
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:403
+msgid "Invalid regular expression."
+msgstr "正则表达式无效。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:389
+msgid ""
+"Regular expression pattern matches empty string. This is not allowed. Please "
+"change the pattern."
+msgstr "正则表达式不允许匹配空字符串，请更改。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:409
+msgid ""
+"Error: you have entered URL filter for this rule.\n"
+"URL detection feature requires BrowserNav v2.6.2 or later add-on to be "
+"installed.\n"
+"However it is either not installed, or failed to initialize.\n"
+"Please install the latest BrowserNav add-on from add-on store and restart "
+"NVDA.\n"
+"Alternatively, please clear URL regex field to enable this rule on all web "
+"sites.\n"
+msgstr ""
+"错误\n"
+" ：当前规则已设置URL匹配。 URL检测功能需要安装BrowserNav v2.6.2或更新版本插"
+"件，但该插件未安装或初始化失败。 请从插件商店安装最新版BrowserNav插件并重启"
+"NVDA，或清空URL正则表达式字段以在所有网站启用此规则。\n"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:427
+msgid "Please enter a single character as pattern."
+msgstr "请输入单字符。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:442
+msgid "Minimum numeric value must be strictly less than maximum numeric value."
+msgstr "最小值必须严格小于最大值。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:450
+msgid "This value is already used in another rule."
+msgstr ""
+"错误\n"
+" ：该值已被其他规则使用。"
+
+#. Translators: wav file not found
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:458
+msgid "Wav file not found."
+msgstr "Wav 文件不存在。"
+
+#. Translators: Invalid wav file
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:465
+msgid "Invalid wav file."
+msgstr "wav 文件无效。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:476
+msgid ""
+"Invalid replacement pattern: {}\n"
+"Plesae use curly braces {} as a format placeholder; please don't use any "
+"other curly braces in replacement string."
+msgstr ""
+"无效替换模式：{}\n"
+"请使用花括号{}作为格式占位符，替换字符串中请勿包含其他花括号。"
+
+#. Translators: Invalid regular expression
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:487
+msgid "Start adjustment must be a number."
+msgstr "开始时调整必须是一个数字。"
+
+#. Translators: Invalid regular expression
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:494
+msgid "End adjustment must be a number."
+msgstr "结束时调整必须是一个数字。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:506
+msgid "tone must be an integer between 0 and 50000"
+msgstr "音调必须是 0 到 50000 之间的整数"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:518
+msgid "duration must be an integer between 0 and 60000"
+msgstr "持续时间必须是 0 到 60000 之间的整数"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:536
+msgid "prosody offset must be an integer between -100 and 100"
+msgstr "韵律偏移必须是 0 到 100 之间的整数"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:540
+msgid "You must specify prosody offset."
+msgstr "必须输入韵律偏移值。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:544
+msgid "Prosody offset cannot be zero."
+msgstr "韵律偏移不能为 0。"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:583
+msgid "Error creating audio rule: {e}"
+msgstr "创建声音规则时出错： {e}"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:584
+msgid "Audio rule Error"
+msgstr "声音规则错误"
+
+#. Translators: browse wav file message
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:600
+msgid "Select wav file:"
+msgstr "选择 Wav 文件："
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:621
+msgid "Hello"
+msgstr "你好"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:622
+msgid "world"
+msgstr "世界"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:724
+msgid "&Rules"
+msgstr "规则 (&R)"
+
+#. Translators: The label for a column in symbols list used to identify a symbol.
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:734
+msgid "Pattern"
+msgstr "模式"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:735
+msgid "Status"
+msgstr "状态"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:736
+msgid "Type"
+msgstr "类型"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:737
+msgid "Effect"
+msgstr "音效文件"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:742
+msgid "Toggle"
+msgstr "切换(&t)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:744
+msgid "Move &up"
+msgstr "上移 (&U)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:746
+msgid "Move &down"
+msgstr "下移 (&D)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:748
+msgid "Add &audio rule"
+msgstr "添加声音规则 (&A)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:750
+msgid "&Edit"
+msgstr "编辑 (&E)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:752
+msgid "Re&move rule"
+msgstr "删除 (&M)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:756
+msgid "Disable PhoneticPuntuation in applications (comma-separated list)"
+msgstr "在以下应用程序中禁用语音规则（以逗号分隔）"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:771
+msgid "Enabled"
+msgstr "启用"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:771
+msgid "Disabled"
+msgstr "禁用"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:816
+msgid "Disable (&toggle)"
+msgstr "禁用 (&T)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:818
+msgid "Enable (&toggle)"
+msgstr "启用 (&T)"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:828
+msgid "Rule disabled"
+msgstr "规则已禁用"
+
+#: addon\globalPlugins\phoneticPunctuation\phoneticPunctuationGui.py:834
+msgid "Add audio rule"
+msgstr "添加声音规则"
+
+#. Add-on summary, usually the user visible name of the addon.
+#. Translators: Summary for this add-on to be shown on installation and add-on information.
+#: buildVars.py:18
+msgid "Earcons and speech rules"
+msgstr "耳标和语音规则"
+
+#. Add-on description
+#. Translators: Long description to be shown for this add-on on add-on information from add-ons manager
+#: buildVars.py:21
+msgid ""
+"Earcons and speech rules add-on (previously known as phonetic punctuation).\n"
+"Allows to set up earcons for words, characters, roles, states, formatting "
+"information.\n"
+"Please check out documentation for the full list of available speech rules."
+msgstr ""
+"耳标和语音规则插件（原名：语音标点） 支持为文本、字符、控件角色、状态及格式信"
+"息设置耳标。 完整语音规则列表请参阅插件文档。"
+
+#~ msgid "Prosody multiplier:"
+#~ msgstr "韵律乘数："
+
+#~ msgid "prosody multiplier must be a float between 0.1 and 10"
+#~ msgstr "韵律乘数必须是介于 0.1 到 10 之间的浮点数"
+
+#~ msgid "You must specify either prosody offset or multiplier but not both"
+#~ msgstr "您必须指定韵律偏移或韵律乘数，但两者不能同时指定"
+
+#~ msgid "Phonetic Punctuation  rules"
+#~ msgstr "语音标点规则"
+
+#~ msgid "Phonetic Punctuation"
+#~ msgstr "语音标点"
+
+#~ msgid "Toggle phonetic punctuation."
+#~ msgstr "切换语音标点"
+
+#~ msgid "Phonetic punctuation on"
+#~ msgstr "启用语音标点"
+
+#~ msgid "Phonetic punctuation off"
+#~ msgstr "禁用语音标点"
+
+#~ msgid ""
+#~ "Phonetic punctuation add-on.\n"
+#~ "Allows to replace punctuation marks in speech, along with any regular "
+#~ "expression patterns with customizable auditory icons. "
+#~ msgstr ""
+#~ "语音标点插件。\n"
+#~ "可以用声音替换语音中的标点符号，以及任何与相应正则表达式匹配的字符串。"
+
+#~ msgid "Phonetic Punctuation and Audio Rules..."
+#~ msgstr "语音标点规则(&R)"
+
+#~ msgid ""
+#~ "Sentence Navigation addon.\n"
+#~ "SentenceNav is an NVDA add-on that allows you to read text by sentences, "
+#~ "as opposed to by paragraphs or words."
+#~ msgstr ""
+#~ "语音标点是一个允许将标点符号转换为声音提示的NVDA插件，通常，它还可以将任何"
+#~ "正则表达式转换为声音提示。"

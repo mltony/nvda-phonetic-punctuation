@@ -45,6 +45,9 @@ from .phoneticPunctuation import *
 from . import phoneticPunctuation as pp
 from .utils import *
 from . import common
+
+addonHandler.initTranslation()
+
 class AudioRuleDialog(wx.Dialog):
     TYPE_LABELS = {
         audioRuleBuiltInWave: _("&Built in wave"),

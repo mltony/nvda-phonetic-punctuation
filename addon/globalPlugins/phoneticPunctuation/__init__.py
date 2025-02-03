@@ -72,7 +72,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
     def  restoreMonkeyPatches(self):
         pp.restoreMonkeyPatches()
 
-    @script(description='Toggle Earcons and Speech Rules.', gestures=['kb:NVDA+Alt+p'])
+    @script(description=_("Toggle Earcons and Speech Rules."), gestures=['kb:NVDA+Alt+p'])
     def script_togglePp(self, gesture):
         enabled = utils.getConfig("enabled")
         enabled = not enabled
@@ -83,7 +83,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
             msg = _("Earcons and Speech Rules off")
         ui.message(msg)
 
-    @script(description='Toggle state verbosity reporting.', gestures=['kb:NVDA+Alt+['])
+    @script(description=_("Toggle state verbosity reporting."), gestures=['kb:NVDA+Alt+['])
     def script_toggleStateVerbosity(self, gesture):
         verbose = utils.getConfig("stateVerbose")
         verbose = not verbose
@@ -95,7 +95,7 @@ class GlobalPlugin(globalPluginHandler.GlobalPlugin):
         ui.message(msg)
         frenzy.updateRules()
 
-    @script(description='Speak current heading level.', gestures=['kb:NVDA+h'])
+    @script(description=_("Speak current heading level."), gestures=['kb:NVDA+h'])
     def script_speakHeadingLevel(self, gesture):
         count=scriptHandler.getLastScriptRepeatCount()
         focus  = api.getFocusObject()
