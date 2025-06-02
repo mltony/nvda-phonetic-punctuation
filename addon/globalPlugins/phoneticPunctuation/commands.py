@@ -43,7 +43,11 @@ import wx
 
 from .utils import *
 
-ppSynchronousPlayer = nvwave.WavePlayer(channels=2, samplesPerSec=int(tones.SAMPLE_RATE), bitsPerSample=16, outputDevice=config.conf["audio"]["outputDevice"],wantDucking=True)
+try:
+    outputDevice=config.conf["speech"]["outputDevice"]
+except KeyError:
+    outputDevice=config.conf["audio"]["outputDevice"]
+ppSynchronousPlayer = nvwave.WavePlayer(channels=2, samplesPerSec=int(tones.SAMPLE_RATE), bitsPerSample=16, outputDevice=outputDevice,wantDucking=True, purpose=nvwave.AudioPurpose.SOUNDS,)
 
 class PpSynchronousCommand(speech.commands.BaseCallbackCommand):
     def getDuration(self):
@@ -105,7 +109,19 @@ class PpWaveFileCommand(PpSynchronousCommand):
             n = len(unpacked)
         packed = struct.pack(f"<{n}h", *unpacked)
         self.buf = packed
-        self.fileWavePlayer = nvwave.WavePlayer(channels=f.getnchannels(), samplesPerSec=f.getframerate(),bitsPerSample=f.getsampwidth()*8, outputDevice=config.conf["audio"]["outputDevice"],wantDucking=False)
+        try:
+            outputDevice=config.conf["speech"]["outputDevice"]
+        except KeyError:
+            outputDevice=config.conf["audio"]["outputDevice"]
+        self.fileWavePlayer = nvwave.WavePlayer(
+            channels=f.getnchannels(),
+            samplesPerSec=f.getframerate(),
+            bitsPerSample=f.getsampwidth()*8,
+            outputDevice=outputDevice,
+            wantDucking=False,
+            purpose=nvwave.AudioPurpose.SOUNDS,
+        )
+        
 
     def run(self):
         f = self.f
