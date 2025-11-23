@@ -790,7 +790,7 @@ def new_getIndentationSpeech(indentation, formatConfig):
     indentSequence = []
     if not indentation:
         if toneIndentConfig:
-            indentSequence.append(speech.commands.BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.IDT_TONE_DURATION))
+            indentSequence.append(speech.commands.BeepCommand(speech.speech.IDT_BASE_FREQUENCY, speech.speech.getIndentToneDuration()))
         if speechIndentConfig:
             # mltony change
             noIndentRule = frenzy.otherRules.get(OtherRule.NO_INDENT, None)
