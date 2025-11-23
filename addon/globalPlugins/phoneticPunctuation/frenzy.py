@@ -237,7 +237,8 @@ class FakeTextInfo:
         except KeyError:
             pass
         if formatConfig != self.formatConfig:
-            raise ValueError
+            #raise ValueError
+            pass
         stack = []
         info = self.info
         skipSet = self.skipSet

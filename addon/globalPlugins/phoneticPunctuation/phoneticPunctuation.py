@@ -830,7 +830,7 @@ def new_getIndentationSpeech(indentation, formatConfig):
     if toneIndentConfig:
         if quarterTones <= speech.speech.IDT_MAX_SPACES:
             pitch = speech.speech.IDT_BASE_FREQUENCY * 2 ** (quarterTones / 24.0)  # 24 quarter tones per octave.
-            indentSequence.append(speech.commands.BeepCommand(pitch, speech.speech.IDT_TONE_DURATION))
+            indentSequence.append(speech.commands.BeepCommand(pitch, speech.speech.getIndentToneDuration()))
         else:
             # we have more than 72 spaces (18 tabs), and must speak it since we don't want to hurt the users ears.
             speak = True
