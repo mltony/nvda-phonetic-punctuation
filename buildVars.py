@@ -22,7 +22,7 @@ addon_info = {
 Allows to set up earcons for words, characters, roles, states, formatting information.
 Please check out documentation for the full list of available speech rules."""),
     # version
-    "addon_version": "3.0.7",
+    "addon_version": "3.0.8",
     # Author(s)
     "addon_author": u"Tony Malykh <anton.malykh@gmail.com>",
     # URL for the add-on documentation support
@@ -32,7 +32,7 @@ Please check out documentation for the full list of available speech rules."""),
     # Minimum NVDA version supported (e.g. "2018.3")
     "addon_minimumNVDAVersion": "2026.1",
     # Last NVDA version supported/tested (e.g. "2018.4", ideally more recent than minimum version)
-    "addon_lastTestedNVDAVersion": "2026.1",
+    "addon_lastTestedNVDAVersion": "2026.2",
     # Add-on update channel (default is stable or None)
     "addon_updateChannel": None,
 }

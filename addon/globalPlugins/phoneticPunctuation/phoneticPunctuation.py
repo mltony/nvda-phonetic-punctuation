@@ -847,8 +847,11 @@ def new_getSelectionMessageSpeech(
     When we replace say space character with an earcon, then "space selected" message doesn't work well.
     Fixing that behavior.
     """
-    if isPhoneticPunctuationEnabled() and not isinstance(text, str):
-        # Assuming that str is an earcon rather than string
+    # NVDA 2026.2 passes a speech sequence for single-character selections.
+    # Let NVDA insert that sequence into the translated message; wrapping it
+    # as one item would produce a nested list and discard the character speech.
+    if isPhoneticPunctuationEnabled() and not isinstance(text, (str, list)):
+        # Older NVDA versions can pass a single earcon instead of text.
         return [
             message.replace('%s', ''),
             text,
